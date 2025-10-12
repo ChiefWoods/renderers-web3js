@@ -1,7 +1,7 @@
 {
-    "name": "@codama/renderers-demo",
+    "name": "@codama/renderers-js-web3js",
     "version": "1.0.4",
-    "description": "Demo renderer to help creating new ones",
+    "description": "Codama renderer for Web3.js",
     "exports": {
         "types": "./dist/types/index.d.ts",
         "react-native": "./dist/index.react-native.mjs",
@@ -74,10 +74,10 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/codama-idl/renderers-demo"
+        "url": "https://github.com/pratikbuilds/renderers-js-web3js"
     },
     "bugs": {
-        "url": "http://github.com/codama-idl/renderers-demo/issues"
+        "url": "http://github.com/pratikbuilds/renderers-js-web3js/issues"
     },
     "browserslist": [
         "supports bigint and not dead",

@@ -27,8 +27,8 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const linkables = new LinkableDictionary();
     const stack = new NodeStack();
 
-    const extension = options.extension ?? 'md';
-    const indexFilename = options.indexFilename ?? 'README';
+    const extension = options.extension ?? 'ts';
+    const indexFilename = options.indexFilename ?? 'index';
     const typeVisitor = getTypeVisitor({ stack, typeIndent: options.typeIndent });
     const valueVisitor = getValueVisitor({ stack });
     const byteSizeVisitor = getByteSizeVisitor(linkables, { stack });

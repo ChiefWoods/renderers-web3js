@@ -4,7 +4,7 @@ import { BaseFragment, createFragmentTemplate, mapFragmentContent, Path } from '
 import {
     addToImportMap,
     createImportMap,
-    getImportMapLinks,
+    // getImportMapLinks,
     ImportMap,
     mergeImportMaps,
     PathOverrides,
@@ -39,6 +39,7 @@ export function addFragmentImports(fragment: Fragment, path: Path, names: string
     return Object.freeze({ ...fragment, imports: addToImportMap(fragment.imports, path, names) });
 }
 
+// md based Fragment Functions
 export function getFrontmatterFragment(title: string, description: string): Fragment {
     return fragment`---\ntitle: ${title}\ndescription: ${description}\n---`;
 }
@@ -80,7 +81,7 @@ export function getCommentFragment(lines: string[]): Fragment {
 
 export function getPageFragment(fragments: Fragment[], pathOverrides: PathOverrides = {}): Fragment {
     const page = mergeFragments(fragments, cs => cs.join('\n\n'));
-    const links = getImportMapLinks(page.imports, pathOverrides);
-    if (links.length === 0) return page;
-    return fragment`${page}\n\n## See also\n\n${links.join('\n')}`;
+    // const links = getImportMapLinks(page.imports, pathOverrides);
+    return page;
+    // return fragment`${page}\n\n## See also\n\n${links.join('\n')}`;
 }

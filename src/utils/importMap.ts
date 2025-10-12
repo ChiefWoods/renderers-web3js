@@ -25,11 +25,29 @@ export function mergeImportMaps(importMaps: ImportMap[]): ImportMap {
 
 export type PathOverrides = Record<Path, Path>;
 
-export function getImportMapLinks(importMap: ImportMap, pathOverrides: PathOverrides = {}): string[] {
-    return [...resolvePaths(importMap, pathOverrides).entries()].flatMap(([path, names]) =>
-        [...names].map(name => `- [${name}](${joinPath(path, camelCase(name))}.md)`),
-    );
+export function getImportStatements(importMap: ImportMap, pathOverrides: PathOverrides = {}): string[] {
+    const resolved = resolvePaths(importMap, pathOverrides);
+    const statements: string[] = [];
+
+    for (const [path, names] of resolved.entries()) {
+        const sortedNames = [...names].sort();
+        if (sortedNames.length === 0) continue;
+
+        if (sortedNames.length === 1) {
+            statements.push(`import { ${sortedNames[0]} } from '${path}';`);
+        } else {
+            statements.push(`import { ${sortedNames.join(', ')} } from '${path}';`);
+        }
+    }
+
+    return statements.sort();
 }
+
+// export function getImportMapLinks(importMap: ImportMap, pathOverrides: PathOverrides = {}): string[] {
+//     return [...resolvePaths(importMap, pathOverrides).entries()].flatMap(([path, names]) =>
+//         [...names].map(name => `- [${name}](${joinPath(path, camelCase(name))}.md)`),
+//     );
+// }
 
 function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): ImportMap {
     const DEFAULT_PATH_OVERRIDES: PathOverrides = {
@@ -37,6 +55,8 @@ function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): 
         generatedInstructions: joinPath('..', 'instructions'),
         generatedPdas: joinPath('..', 'pdas'),
         generatedTypes: joinPath('..', 'types'),
+        web3: '@solana/web3.js',
+        borsh: '@coral-xyz/borsh',
     };
 
     pathOverrides = { ...DEFAULT_PATH_OVERRIDES, ...pathOverrides };
