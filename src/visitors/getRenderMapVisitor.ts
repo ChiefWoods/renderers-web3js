@@ -2,7 +2,6 @@ import { camelCase } from '@codama/nodes';
 import { createRenderMap, mergeRenderMaps } from '@codama/renderers-core';
 import {
     extendVisitor,
-    getByteSizeVisitor,
     LinkableDictionary,
     NodeStack,
     pipe,
@@ -13,15 +12,15 @@ import {
 } from '@codama/visitors-core';
 
 import {
-    getAccountPageFragment,
-    getDefinedTypePageFragment,
-    getInstructionPageFragment,
-    getPdaPageFragment,
-    getProgramPageFragment,
+    getAccountTypeFragment,
+    getDefinedTypeFragment,
+    getInstructionFunctionFragment,
+    getPdaFunctionFragment,
+    getProgramConstantsFragment,
 } from '../fragments';
 import { RenderMapOptions } from '../utils';
-import { getTypeVisitor } from './getTypeVisitor';
-import { getValueVisitor } from './getValueVisitor';
+import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
+import { getTypeVisitor } from './getTypeVisitor-v2';
 
 export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const linkables = new LinkableDictionary();
@@ -30,8 +29,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const extension = options.extension ?? 'ts';
     const indexFilename = options.indexFilename ?? 'index';
     const typeVisitor = getTypeVisitor({ stack, typeIndent: options.typeIndent });
-    const valueVisitor = getValueVisitor({ stack });
-    const byteSizeVisitor = getByteSizeVisitor(linkables, { stack });
+    const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
 
     return pipe(
         staticVisitor(() => createRenderMap(), {
@@ -40,38 +38,36 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         v =>
             extendVisitor(v, {
                 visitAccount(node) {
-                    const pda = node.pda ? linkables.get([...stack.getPath(), node.pda]) : undefined;
-                    const size = visit(node, byteSizeVisitor);
                     return createRenderMap(
                         `accounts/${camelCase(node.name)}.${extension}`,
-                        getAccountPageFragment(node, typeVisitor, size ?? undefined, pda),
+                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
                 },
 
                 visitDefinedType(node) {
                     return createRenderMap(
-                        `definedTypes/${camelCase(node.name)}.${extension}`,
-                        getDefinedTypePageFragment(node, typeVisitor),
+                        `types/${camelCase(node.name)}.${extension}`,
+                        getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
                 },
 
                 visitInstruction(node) {
                     return createRenderMap(
                         `instructions/${camelCase(node.name)}.${extension}`,
-                        getInstructionPageFragment(node, typeVisitor),
+                        getInstructionFunctionFragment(node, typeVisitor, borshSchemaVisitor),
                     );
                 },
 
                 visitPda(node) {
                     return createRenderMap(
                         `pdas/${camelCase(node.name)}.${extension}`,
-                        getPdaPageFragment(node, typeVisitor, valueVisitor),
+                        getPdaFunctionFragment(node, typeVisitor),
                     );
                 },
 
                 visitProgram(node, { self }) {
                     return mergeRenderMaps([
-                        createRenderMap(`${indexFilename}.${extension}`, getProgramPageFragment(node)),
+                        createRenderMap(`${indexFilename}.${extension}`, getProgramConstantsFragment(node)),
                         ...node.accounts.map(n => visit(n, self)),
                         ...node.definedTypes.map(n => visit(n, self)),
                         ...node.instructions.map(n => visit(n, self)),

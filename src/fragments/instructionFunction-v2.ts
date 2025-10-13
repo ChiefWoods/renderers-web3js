@@ -1,7 +1,7 @@
 import { camelCase, InstructionNode, pascalCase, structTypeNodeFromInstructionArgumentNodes } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, mergeFragments } from '../utils';
+import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
 export function getInstructionFunctionFragment(
@@ -16,7 +16,7 @@ export function getInstructionFunctionFragment(
 
     // 2. Generate Accounts interface (if there are accounts)
     if (hasAccounts) {
-        fragments.push(getAccountsInterfaceFragment(node, typeVisitor));
+        fragments.push(getAccountsInterfaceFragment(node));
     }
 
     // 3. Generate Args interface (if there are arguments)
@@ -32,10 +32,11 @@ export function getInstructionFunctionFragment(
     // 5. Generate the instruction builder function
     fragments.push(getInstructionBuilderFragment(node, hasAccounts, hasArgs));
 
-    return mergeFragments(fragments, cs => cs.join('\n\n'));
+    // Combine fragments and prepend imports
+    return getCodeFileFragment(fragments);
 }
 
-function getAccountsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisitor): Fragment {
+function getAccountsInterfaceFragment(node: InstructionNode): Fragment {
     const name = pascalCase(node.name);
     const interfaceName = `${name}InstructionAccounts`;
 
@@ -58,14 +59,16 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
     const name = pascalCase(node.name);
     const interfaceName = `${name}InstructionArgs`;
 
-    if (node.arguments.length === 0) {
+    // Filter out arguments with defaultValueStrategy: 'omitted' (like discriminators)
+    const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+
+    if (userArgs.length === 0) {
         return fragment``;
     }
 
-    const fields = node.arguments.map(arg => {
+    const fields = userArgs.map(arg => {
         const fieldName = camelCase(arg.name);
         const fieldType = visit(arg.type, typeVisitor);
-        console.log('FieldType', fieldType);
         return fragment`${fieldName}: ${fieldType}`;
     });
 
@@ -118,12 +121,16 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
     const argsType = `${name}InstructionArgs`;
     const schemaName = `${name}InstructionDataSchema`;
 
+    // Check if we have user-facing args (non-omitted)
+    const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+    const hasUserArgs = userArgs.length > 0;
+
     // Build function parameters
     const params: string[] = [];
     if (hasAccounts) {
         params.push(`accounts: ${accountsType}`);
     }
-    if (hasArgs) {
+    if (hasUserArgs) {
         params.push(`args: ${argsType}`);
     }
     params.push(`programId: PublicKey`);
@@ -134,9 +141,57 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
     const keysArrayFragment = getKeysArrayFragment(node);
 
     // Generate data serialization
-    const dataFragment = hasArgs
-        ? addFragmentImports(fragment`const data = Buffer.from(serialize(${schemaName}, args));`, 'borsh', 'serialize')
-        : fragment`const data = Buffer.alloc(0);`;
+    let dataFragment: Fragment;
+    if (hasArgs) {
+        // Check if there are omitted args (like discriminators) with default values
+        const omittedArgs = node.arguments.filter(arg => arg.defaultValueStrategy === 'omitted');
+
+        if (omittedArgs.length > 0 && hasUserArgs) {
+            // Need to merge user args with default values
+            const defaultValues = omittedArgs.map(arg => {
+                const argName = camelCase(arg.name);
+                // Get the default value - for discriminators it's typically a bytes value
+                if (arg.defaultValue && arg.defaultValue.kind === 'bytesValueNode') {
+                    const hexData = arg.defaultValue.data;
+                    return fragment`${argName}: Buffer.from('${hexData}', 'hex')`;
+                }
+                return fragment`${argName}: undefined`;
+            });
+
+            const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
+            dataFragment = addFragmentImports(
+                fragment`const data = Buffer.from(serialize(${schemaName}, { ${defaultValuesContent}, ...args }));`,
+                'borsh',
+                'serialize',
+            );
+        } else if (omittedArgs.length > 0) {
+            // Only omitted args, no user args
+            const defaultValues = omittedArgs.map(arg => {
+                const argName = camelCase(arg.name);
+                if (arg.defaultValue && arg.defaultValue.kind === 'bytesValueNode') {
+                    const hexData = arg.defaultValue.data;
+                    return fragment`${argName}: Buffer.from('${hexData}', 'hex')`;
+                }
+                return fragment`${argName}: undefined`;
+            });
+
+            const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
+            dataFragment = addFragmentImports(
+                fragment`const data = Buffer.from(serialize(${schemaName}, { ${defaultValuesContent} }));`,
+                'borsh',
+                'serialize',
+            );
+        } else {
+            // No omitted args
+            dataFragment = addFragmentImports(
+                fragment`const data = Buffer.from(serialize(${schemaName}, args));`,
+                'borsh',
+                'serialize',
+            );
+        }
+    } else {
+        dataFragment = fragment`const data = Buffer.alloc(0);`;
+    }
 
     // Build return statement
     const returnFragment = addFragmentImports(

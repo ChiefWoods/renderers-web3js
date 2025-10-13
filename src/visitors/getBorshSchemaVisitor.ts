@@ -8,7 +8,7 @@ import {
 } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, mergeFragments } from '../utils';
+import { addFragmentImports, fragment, mergeFragments } from '../utils';
 
 export type BorshSchemaVisitor = ReturnType<typeof getBorshSchemaVisitor>;
 

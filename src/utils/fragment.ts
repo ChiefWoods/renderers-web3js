@@ -4,7 +4,7 @@ import { BaseFragment, createFragmentTemplate, mapFragmentContent, Path } from '
 import {
     addToImportMap,
     createImportMap,
-    // getImportMapLinks,
+    getImportStatements,
     ImportMap,
     mergeImportMaps,
     PathOverrides,
@@ -37,6 +37,30 @@ export function mergeFragments(
 
 export function addFragmentImports(fragment: Fragment, path: Path, names: string[] | string): Fragment {
     return Object.freeze({ ...fragment, imports: addToImportMap(fragment.imports, path, names) });
+}
+
+// Code generation helper functions
+export function getJsDocFragment(docs?: Docs): Fragment {
+    if (!docs || docs.length === 0) return createFragment('');
+    const lines = ['/**', ...docs.map(line => ` * ${line}`), ' */'];
+    return createFragment(lines.join('\n'));
+}
+
+export function getImportsFragment(imports: ImportMap, pathOverrides: PathOverrides = {}): Fragment {
+    const statements = getImportStatements(imports, pathOverrides);
+    if (statements.length === 0) return createFragment('');
+    return createFragment(statements.join('\n'));
+}
+
+export function getCodeFileFragment(fragments: Fragment[], pathOverrides: PathOverrides = {}): Fragment {
+    const merged = mergeFragments(fragments, cs => cs.join('\n\n'));
+    const importsFragment = getImportsFragment(merged.imports, pathOverrides);
+
+    if (importsFragment.content.length === 0) {
+        return merged;
+    }
+
+    return createFragment(`${importsFragment.content}\n\n${merged.content}`);
 }
 
 // md based Fragment Functions
@@ -79,7 +103,7 @@ export function getCommentFragment(lines: string[]): Fragment {
     return fragment`<!--\n${lines.join('\n')}\n-->`;
 }
 
-export function getPageFragment(fragments: Fragment[], pathOverrides: PathOverrides = {}): Fragment {
+export function getPageFragment(fragments: Fragment[]): Fragment {
     const page = mergeFragments(fragments, cs => cs.join('\n\n'));
     // const links = getImportMapLinks(page.imports, pathOverrides);
     return page;

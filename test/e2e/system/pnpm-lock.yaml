@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@codama/renderers-demo':
         specifier: file:../../..
-        version: file:../../..(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)
+        version: '@codama/renderers-js-web3js@file:../../..(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)'
 
 packages:
 
@@ -27,7 +27,7 @@ packages:
   '@codama/renderers-core@1.2.2':
     resolution: {integrity: sha512-dPyHgn5L45G+tWP17ITvOlpX3+s2FcJHMjAhFZlmUHAJpH/wl+UsUwuWg698iSb56Er2jUwqX7srw5iZf7XHjQ==}
 
-  '@codama/renderers-demo@file:../../..':
+  '@codama/renderers-js-web3js@file:../../..':
     resolution: {directory: ../../.., type: directory}
     engines: {node: '>=20.18.0'}
 
@@ -202,7 +202,7 @@ snapshots:
       '@codama/nodes': 1.3.7
       '@codama/visitors-core': 1.3.7
 
-  '@codama/renderers-demo@file:../../..(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)':
+  '@codama/renderers-js-web3js@file:../../..(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)':
     dependencies:
       '@codama/errors': 1.3.7
       '@codama/nodes': 1.3.7
