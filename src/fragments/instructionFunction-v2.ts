@@ -1,10 +1,14 @@
-import { camelCase, InstructionNode, pascalCase } from '@codama/nodes';
+import { camelCase, InstructionNode, pascalCase, structTypeNodeFromInstructionArgumentNodes } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { TypeVisitor } from '../visitors';
-import { addFragmentImports, fragment, Fragment, mergeFragments } from '../utils';
+import { addFragmentImports, Fragment, fragment, mergeFragments } from '../utils';
+import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
-export function getInstructionFunctionFragment(node: InstructionNode, typeVisitor: TypeVisitor): Fragment {
+export function getInstructionFunctionFragment(
+    node: InstructionNode,
+    typeVisitor: TypeVisitor,
+    borshSchemaVisitor: BorshSchemaVisitor,
+): Fragment {
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
 
@@ -20,7 +24,12 @@ export function getInstructionFunctionFragment(node: InstructionNode, typeVisito
         fragments.push(getArgsInterfaceFragment(node, typeVisitor));
     }
 
-    // 4. Generate the instruction builder function
+    // 4. Generate Borsh schema (if there are arguments)
+    if (hasArgs) {
+        fragments.push(getInstructionSchemaFragment(node, borshSchemaVisitor));
+    }
+
+    // 5. Generate the instruction builder function
     fragments.push(getInstructionBuilderFragment(node, hasAccounts, hasArgs));
 
     return mergeFragments(fragments, cs => cs.join('\n\n'));
@@ -65,6 +74,21 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
     return fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`;
 }
 
+function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
+    const name = pascalCase(node.name);
+    const schemaName = `${name}InstructionDataSchema`;
+
+    if (node.arguments.length === 0) {
+        return fragment``;
+    }
+
+    // Create a struct type from the instruction arguments
+    const argsStruct = structTypeNodeFromInstructionArgumentNodes(node.arguments);
+    const schema = visit(argsStruct, borshSchemaVisitor);
+
+    return fragment`const ${schemaName} = ${schema};`;
+}
+
 function getKeysArrayFragment(node: InstructionNode): Fragment {
     if (node.accounts.length === 0) {
         return fragment`const keys: AccountMeta[] = [];`;
@@ -92,6 +116,7 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
     const functionName = `create${name}Instruction`;
     const accountsType = `${name}InstructionAccounts`;
     const argsType = `${name}InstructionArgs`;
+    const schemaName = `${name}InstructionDataSchema`;
 
     // Build function parameters
     const params: string[] = [];
@@ -101,15 +126,17 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
     if (hasArgs) {
         params.push(`args: ${argsType}`);
     }
-    params.push('programId: PublicKey');
+    params.push(`programId: PublicKey`);
 
     const paramsStr = params.join(', ');
 
     // Build the keys array
     const keysArrayFragment = getKeysArrayFragment(node);
 
-    // Phase 4: Use placeholder buffer instead of real Borsh serialization
-    const dataFragment = fragment`const data = Buffer.alloc(8); // Placeholder - will implement Borsh in Phase 6`;
+    // Generate data serialization
+    const dataFragment = hasArgs
+        ? addFragmentImports(fragment`const data = Buffer.from(serialize(${schemaName}, args));`, 'borsh', 'serialize')
+        : fragment`const data = Buffer.alloc(0);`;
 
     // Build return statement
     const returnFragment = addFragmentImports(
