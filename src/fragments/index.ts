@@ -7,3 +7,4 @@ export * from './pdaPage';
 export * from './pdaSeeds';
 export * from './programErrors';
 export * from './programPage';
+export * from './instructionFunction-v2';
