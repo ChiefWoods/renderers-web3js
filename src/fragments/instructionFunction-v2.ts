@@ -47,7 +47,9 @@ function getAccountsInterfaceFragment(node: InstructionNode): Fragment {
     const fields = node.accounts.map(account => {
         const fieldName = camelCase(account.name);
         const optional = account.isOptional ? '?' : '';
-        return addFragmentImports(fragment`${fieldName}${optional}: PublicKey`, 'web3', 'PublicKey');
+        const isSigner = account.isSigner === 'either' ? 'PublicKey | Keypair' : 'PublicKey';
+
+        return addFragmentImports(fragment`${fieldName}${optional}: ${isSigner}`, 'web3', ['PublicKey', 'Keypair']);
     });
 
     const fieldsContent = mergeFragments(fields, cs => cs.map(c => `    ${c};`).join('\n'));

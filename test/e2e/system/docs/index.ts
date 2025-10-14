@@ -1,20 +1,8 @@
 import { PublicKey } from '@solana/web3.js';
 
-export const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
+export const DEMOTEST_PROGRAM_ID = new PublicKey('ByrkLR1atR9TS4E9GiN29z3i7jYWgqSPAq4HJR4CP9U7');
 
-export * from './accounts/nonce';
-export * from './instructions/createAccount';
-export * from './instructions/assign';
-export * from './instructions/transferSol';
-export * from './instructions/createAccountWithSeed';
-export * from './instructions/advanceNonceAccount';
-export * from './instructions/withdrawNonceAccount';
-export * from './instructions/initializeNonceAccount';
-export * from './instructions/authorizeNonceAccount';
-export * from './instructions/allocate';
-export * from './instructions/allocateWithSeed';
-export * from './instructions/assignWithSeed';
-export * from './instructions/transferSolWithSeed';
-export * from './instructions/upgradeNonceAccount';
-export * from './types/nonceVersion';
-export * from './types/nonceState';
+export * from './accounts/storage';
+export * from './instructions/create';
+export * from './instructions/delete';
+export * from './instructions/update';

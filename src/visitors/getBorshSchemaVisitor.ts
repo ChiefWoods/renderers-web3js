@@ -44,7 +44,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitBytesType() {
                     // Bytes as a variable-length array
-                    return addFragmentImports(fragment`bytes()`, 'borsh', 'bytes');
+                    return addFragmentImports(fragment`array(u8())`, 'borsh', ['array', 'u8']);
                 },
 
                 visitDateTimeType(node, { self }) {
