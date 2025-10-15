@@ -1,7 +1,7 @@
 import { camelCase, PdaNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment } from '../utils';
+import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
 import { TypeVisitor } from '../visitors';
 
 export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor): Fragment {
@@ -109,12 +109,12 @@ function getSeedEncodingFragment(seedName: string, seedType: any): Fragment {
     } else if (seedType.kind === 'stringTypeNode') {
         return fragment`Buffer.from(seeds.${seedName}, 'utf8')`;
     } else if (seedType.kind === 'sizePrefixTypeNode' && seedType.type.kind === 'stringTypeNode') {
-        // For Anchor-style strings with size prefix, we need to serialize properly
-        // For now, encode the string with length prefix
+        // For Anchor-style strings with size prefix, we need to encode properly
+        // Create a temporary schema and encode the string
         return addFragmentImports(
-            fragment`Buffer.from(serialize(struct([['value', str()]]), { value: seeds.${seedName} }))`,
+            fragment`(() => { const schema = struct([['value', str()]]); const buf = Buffer.alloc(1000); schema.encode({ value: seeds.${seedName} }, buf); return buf.subarray(0, schema.getSpan(buf)); })()`,
             'borsh',
-            ['serialize', 'struct', 'str'],
+            ['struct', 'str'],
         );
     } else if (seedType.kind === 'numberTypeNode') {
         // Numbers need to be encoded as buffers

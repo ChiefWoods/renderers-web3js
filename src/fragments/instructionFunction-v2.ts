@@ -101,10 +101,23 @@ function getKeysArrayFragment(node: InstructionNode): Fragment {
 
     const accountEntries = node.accounts.map(account => {
         const accountName = camelCase(account.name);
-        const isSigner = account.isSigner ?? false;
         const isWritable = account.isWritable ?? false;
 
-        return fragment`{ pubkey: accounts.${accountName}, isSigner: ${isSigner}, isWritable: ${isWritable} }`;
+        // Handle "either" case - check if it's a Keypair at runtime
+        let signerCheck: string;
+        if (account.isSigner === 'either') {
+            signerCheck = `'publicKey' in accounts.${accountName}`;
+        } else {
+            signerCheck = String(account.isSigner ?? false);
+        }
+
+        // For pubkey, handle both Keypair.publicKey and direct PublicKey
+        const pubkeyAccess =
+            account.isSigner === 'either'
+                ? `'publicKey' in accounts.${accountName} ? accounts.${accountName}.publicKey : accounts.${accountName}`
+                : `accounts.${accountName}`;
+
+        return fragment`{ pubkey: ${pubkeyAccess}, isSigner: ${signerCheck}, isWritable: ${isWritable} }`;
     });
 
     const entriesContent = mergeFragments(accountEntries, cs => cs.map(c => `        ${c},`).join('\n'));
@@ -161,11 +174,9 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
             });
 
             const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
-            dataFragment = addFragmentImports(
-                fragment`const data = Buffer.from(serialize(${schemaName}, { ${defaultValuesContent}, ...args }));`,
-                'borsh',
-                'serialize',
-            );
+            dataFragment = fragment`const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode({ ${defaultValuesContent}, ...args }, buffer);
+    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
         } else if (omittedArgs.length > 0) {
             // Only omitted args, no user args
             const defaultValues = omittedArgs.map(arg => {
@@ -178,18 +189,14 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
             });
 
             const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
-            dataFragment = addFragmentImports(
-                fragment`const data = Buffer.from(serialize(${schemaName}, { ${defaultValuesContent} }));`,
-                'borsh',
-                'serialize',
-            );
+            dataFragment = fragment`const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode({ ${defaultValuesContent} }, buffer);
+    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
         } else {
             // No omitted args
-            dataFragment = addFragmentImports(
-                fragment`const data = Buffer.from(serialize(${schemaName}, args));`,
-                'borsh',
-                'serialize',
-            );
+            dataFragment = fragment`const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode(args, buffer);
+    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
         }
     } else {
         dataFragment = fragment`const data = Buffer.alloc(0);`;

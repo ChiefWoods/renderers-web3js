@@ -1,4 +1,3 @@
-import { camelCase } from '@codama/nodes';
 import { joinPath, Path } from '@codama/renderers-core';
 
 export type ImportMap = ReadonlyMap<Path, ReadonlySet<string>>;

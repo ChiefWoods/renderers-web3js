@@ -43,7 +43,6 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 },
 
                 visitBytesType() {
-                    // Bytes as a variable-length array
                     return addFragmentImports(fragment`array(u8())`, 'borsh', ['array', 'u8']);
                 },
 
@@ -63,21 +62,18 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     return addFragmentImports(fragment`${schemaName}`, 'generatedTypes', schemaName);
                 },
 
-                visitEnumType(node, { self }) {
+                visitEnumType(node) {
                     if (isScalarEnum(node)) {
                         // Scalar enums are represented as u8 discriminator
                         return addFragmentImports(fragment`u8()`, 'borsh', 'u8');
                     }
 
-                    // Data enums: array of variant schemas
-                    const variants = node.variants.map(variant => {
-                        const variantName = pascalCase(variant.name);
-                        const variantSchema = visit(variant, self);
-                        return fragment`['${variantName}', ${variantSchema}]`;
-                    });
-
-                    const variantsContent = mergeFragments(variants, cs => cs.join(', '));
-                    return addFragmentImports(fragment`enm([${variantsContent}])`, 'borsh', 'enm');
+                    // Data enums (tagged unions) are not directly supported by @coral-xyz/borsh
+                    // They would need to be manually implemented with custom serialization
+                    throw new Error(
+                        `Complex enum types are not supported by @coral-xyz/borsh. ` +
+                            `Enum with variants needs custom implementation.`,
+                    );
                 },
 
                 visitEnumEmptyVariantType() {
@@ -105,7 +101,11 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 },
 
                 visitFixedSizeType(node, { self }) {
-                    // Ignore fixed size wrapper
+                    // Handle fixed size bytes as fixed-size arrays
+                    if (isNode(node.type, 'bytesTypeNode')) {
+                        return addFragmentImports(fragment`array(u8(), ${node.size})`, 'borsh', ['array', 'u8']);
+                    }
+                    // For other types, ignore fixed size wrapper
                     return visit(node.type, self);
                 },
 
@@ -119,10 +119,9 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     return visit(node.type, self);
                 },
 
-                visitMapType(node, { self }) {
-                    const key = visit(node.key, self);
-                    const value = visit(node.value, self);
-                    return addFragmentImports(fragment`map(${key}, ${value})`, 'borsh', 'map');
+                visitMapType() {
+                    // Map types are not supported by @coral-xyz/borsh
+                    throw new Error('Map types are not supported by @coral-xyz/borsh');
                 },
 
                 visitNumberType(node) {
@@ -198,9 +197,14 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 },
 
                 visitTupleType(node, { self }) {
-                    const itemSchemas = node.items.map(item => visit(item, self));
-                    const itemsContent = mergeFragments(itemSchemas, cs => cs.join(', '));
-                    return addFragmentImports(fragment`tuple([${itemsContent}])`, 'borsh', 'tuple');
+                    // Tuples are not directly supported by @coral-xyz/borsh
+                    // They can be represented as structs with indexed field names
+                    const fieldSchemas = node.items.map((item, index) => {
+                        const fieldSchema = visit(item, self);
+                        return fragment`['field${index}', ${fieldSchema}]`;
+                    });
+                    const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
+                    return addFragmentImports(fragment`struct([${fieldsContent}])`, 'borsh', 'struct');
                 },
 
                 visitZeroableOptionType(node, { self }) {

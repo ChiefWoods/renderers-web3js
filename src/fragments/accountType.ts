@@ -101,25 +101,17 @@ function getDeserializeAccountFragment(node: AccountNode): Fragment {
     if (hasDiscriminator) {
         // Deserialize all fields, then filter out discriminators
         const destructureFields = discriminatorNames.map(name => `${name}: _`).join(', ');
-        return addFragmentImports(
-            fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
-    const deserialized = deserialize(${schemaName}, data);
+        return fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
+    const deserialized = ${schemaName}.decode(data);
     const { ${destructureFields}, ...accountData } = deserialized;
     return accountData as ${dataTypeName};
-}`,
-            'borsh',
-            'deserialize',
-        );
+}`;
     }
 
     // No discriminator - deserialize entire buffer
-    return addFragmentImports(
-        fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
-    return deserialize(${schemaName}, data);
-}`,
-        'borsh',
-        'deserialize',
-    );
+    return fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
+    return ${schemaName}.decode(data);
+}`;
 }
 
 function getFetchAccountFragment(node: AccountNode): Fragment {
