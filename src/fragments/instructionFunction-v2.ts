@@ -87,7 +87,7 @@ function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor:
         return fragment``;
     }
 
-    // Create a struct type from the instruction arguments
+    // Create a struct type from the instruction arguments (without discriminator)
     const argsStruct = structTypeNodeFromInstructionArgumentNodes(node.arguments);
     const schema = visit(argsStruct, borshSchemaVisitor);
 
@@ -158,48 +158,41 @@ function getInstructionBuilderFragment(node: InstructionNode, hasAccounts: boole
     // Generate data serialization
     let dataFragment: Fragment;
     if (hasArgs) {
-        // Check if there are omitted args (like discriminators) with default values
-        const omittedArgs = node.arguments.filter(arg => arg.defaultValueStrategy === 'omitted');
+        // Get discriminator from omitted args
+        const discriminatorArg = node.arguments.find(
+            arg =>
+                arg.defaultValueStrategy === 'omitted' &&
+                arg.name === 'discriminator' &&
+                arg.defaultValue?.kind === 'bytesValueNode',
+        );
 
-        if (omittedArgs.length > 0 && hasUserArgs) {
-            // Need to merge user args with default values
-            const defaultValues = omittedArgs.map(arg => {
-                const argName = camelCase(arg.name);
-                // Get the default value - for discriminators it's typically a bytes value
-                if (arg.defaultValue && arg.defaultValue.kind === 'bytesValueNode') {
-                    const hexData = arg.defaultValue.data;
-                    return fragment`${argName}: Buffer.from('${hexData}', 'hex')`;
-                }
-                return fragment`${argName}: undefined`;
-            });
-
-            const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
+        if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
+            const discriminatorHex = discriminatorArg.defaultValue.data;
             dataFragment = fragment`const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode({ ${defaultValuesContent}, ...args }, buffer);
-    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
-        } else if (omittedArgs.length > 0) {
-            // Only omitted args, no user args
-            const defaultValues = omittedArgs.map(arg => {
-                const argName = camelCase(arg.name);
-                if (arg.defaultValue && arg.defaultValue.kind === 'bytesValueNode') {
-                    const hexData = arg.defaultValue.data;
-                    return fragment`${argName}: Buffer.from('${hexData}', 'hex')`;
-                }
-                return fragment`${argName}: undefined`;
-            });
-
-            const defaultValuesContent = mergeFragments(defaultValues, cs => cs.join(', '));
-            dataFragment = fragment`const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode({ ${defaultValuesContent} }, buffer);
-    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
+    ${schemaName}.encode(args, buffer);
+    const instructionData = buffer.subarray(0, ${schemaName}.getSpan(buffer));
+    const discriminator = Buffer.from('${discriminatorHex}', 'hex');
+    const data = Buffer.concat([discriminator, instructionData]);`;
         } else {
-            // No omitted args
             dataFragment = fragment`const buffer = Buffer.alloc(1000);
     ${schemaName}.encode(args, buffer);
     const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
         }
     } else {
-        dataFragment = fragment`const data = Buffer.alloc(0);`;
+        // No args, just discriminator
+        const discriminatorArg = node.arguments.find(
+            arg =>
+                arg.defaultValueStrategy === 'omitted' &&
+                arg.name === 'discriminator' &&
+                arg.defaultValue?.kind === 'bytesValueNode',
+        );
+
+        if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
+            const discriminatorHex = discriminatorArg.defaultValue.data;
+            dataFragment = fragment`const data = Buffer.from('${discriminatorHex}', 'hex');`;
+        } else {
+            dataFragment = fragment`const data = Buffer.alloc(0);`;
+        }
     }
 
     // Build return statement
