@@ -87,7 +87,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     const fieldSchemas = fields.map(field => {
                         const fieldName = camelCase(field.name);
                         const fieldSchema = visit(field.type, self);
-                        return fragment`['${fieldName}', ${fieldSchema}]`;
+                        return fragment`${fieldSchema}("${fieldName}")`;
                     });
 
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
@@ -97,7 +97,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 visitEnumTupleVariantType(node, { self }) {
                     // Tuple variant: convert to struct with 'fields' array
                     const tupleSchema = visit(node.tuple, self);
-                    return addFragmentImports(fragment`struct([['fields', ${tupleSchema}]])`, 'borsh', 'struct');
+                    return addFragmentImports(fragment`struct([${tupleSchema}("fields")])`, 'borsh', 'struct');
                 },
 
                 visitFixedSizeType(node, { self }) {
@@ -189,7 +189,29 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     const fieldSchemas = node.fields.map(field => {
                         const fieldName = camelCase(field.name);
                         const fieldSchema = visit(field.type, self);
-                        return fragment`['${fieldName}', ${fieldSchema}]`;
+                        console.log('fieldSchema', fieldSchema);
+                        // Add field name as parameter to layout functions
+                        const schemaContent = fieldSchema.content;
+                        if (schemaContent.includes('()')) {
+                            // Replace () with (fieldName) for simple layouts
+                            return addFragmentImports(
+                                fragment`${schemaContent.replace('()', `("${fieldName}")`)}`,
+                                'borsh',
+                                [...(fieldSchema.imports.get('borsh') || [])],
+                            );
+                        } else if (schemaContent.includes('(') && schemaContent.includes(')')) {
+                            // For layouts with parameters, add field name as last parameter
+                            return addFragmentImports(
+                                fragment`${schemaContent.replace(')', `, "${fieldName}")`)}`,
+                                'borsh',
+                                [...(fieldSchema.imports.get('borsh') || [])],
+                            );
+                        } else {
+                            // Fallback: wrap in function call
+                            return addFragmentImports(fragment`${fieldSchema}("${fieldName}")`, 'borsh', [
+                                ...(fieldSchema.imports.get('borsh') || []),
+                            ]);
+                        }
                     });
 
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
@@ -201,7 +223,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     // They can be represented as structs with indexed field names
                     const fieldSchemas = node.items.map((item, index) => {
                         const fieldSchema = visit(item, self);
-                        return fragment`['field${index}', ${fieldSchema}]`;
+                        return fragment`${fieldSchema}("field${index}")`;
                     });
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
                     return addFragmentImports(fragment`struct([${fieldsContent}])`, 'borsh', 'struct');
