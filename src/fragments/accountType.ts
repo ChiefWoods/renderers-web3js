@@ -1,7 +1,7 @@
 import { AccountNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment } from '../utils';
+import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
 export function getAccountTypeFragment(
@@ -12,21 +12,25 @@ export function getAccountTypeFragment(
     const fragments: Fragment[] = [];
 
     // 1. Generate AccountData interface
+    console.log(`      1️⃣  Generating AccountData interface...`);
     fragments.push(getAccountDataInterfaceFragment(node, typeVisitor));
 
     // 2. Generate Account interface (address + data)
+    console.log(`      2️⃣  Generating Account interface...`);
     fragments.push(getAccountInterfaceFragment(node));
 
     // 3. Generate Borsh schema for deserialization
+    console.log(`      3️⃣  Generating Borsh schema...`);
     fragments.push(getAccountSchemaFragment(node, borshSchemaVisitor));
 
     // 4. Generate deserialize function
+    console.log(`      4️⃣  Generating deserialize function...`);
     fragments.push(getDeserializeAccountFragment(node));
 
     // 5. Generate fetch function
+    console.log(`      5️⃣  Generating fetch function...`);
     fragments.push(getFetchAccountFragment(node));
 
-    // Combine fragments and prepend imports
     return getCodeFileFragment(fragments);
 }
 
@@ -39,7 +43,6 @@ function getAccountDataInterfaceFragment(node: AccountNode, typeVisitor: TypeVis
         .filter(d => d.kind === 'fieldDiscriminatorNode')
         .map(d => d.name);
 
-    // Filter out discriminator fields from the struct
     if (node.data.kind === 'structTypeNode') {
         const filteredFields = node.data.fields.filter(field => !discriminatorNames.includes(field.name));
 
@@ -80,9 +83,18 @@ function getAccountSchemaFragment(node: AccountNode, borshSchemaVisitor: BorshSc
     const name = pascalCase(node.name);
     const schemaName = `${name}AccountDataSchema`;
 
+    console.log(`         → Visiting node.data to generate schema...`);
     const schema = visit(node.data, borshSchemaVisitor);
+    console.log(`         → Schema generated: ${schema.content.substring(0, 100)}...`);
 
-    return fragment`const ${schemaName} = ${schema};`;
+    // Manually merge to ensure imports are preserved
+    const constFragment = fragment`const ${schemaName} = `;
+    const semicolonFragment = fragment`;`;
+
+    const result = mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
+    console.log(`         → Final schema: const ${schemaName} = ${schema.content.substring(0, 60)}...;`);
+
+    return result;
 }
 
 function getDeserializeAccountFragment(node: AccountNode): Fragment {

@@ -1,11 +1,4 @@
-import {
-    camelCase,
-    isNode,
-    isScalarEnum,
-    pascalCase,
-    REGISTERED_TYPE_NODE_KINDS,
-    resolveNestedTypeNode,
-} from '@codama/nodes';
+import { camelCase, isNode, isScalarEnum, REGISTERED_TYPE_NODE_KINDS, resolveNestedTypeNode } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
 import { addFragmentImports, fragment, mergeFragments } from '../utils';
@@ -58,7 +51,8 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitDefinedTypeLink(node) {
                     // Reference to another schema
-                    const schemaName = `${pascalCase(node.name)}Schema`;
+                    const schemaName = `${camelCase(node.name)}Schema`;
+                    console.log(`🔗 [DefinedTypeLink] Importing schema: ${schemaName} from 'generatedTypes'`);
                     return addFragmentImports(fragment`${schemaName}`, 'generatedTypes', schemaName);
                 },
 
@@ -132,6 +126,17 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitOptionType(node, { self }) {
                     const item = visit(node.item, self);
+
+                    // Check the prefix type - standard borsh option uses u8, but some programs use u32
+                    const prefixFormat = isNode(node.prefix, 'numberTypeNode') ? node.prefix.format : 'u8';
+                    console.log(`🔧 [Option] item: ${item.content}, prefix: ${prefixFormat}`);
+
+                    if (prefixFormat === 'u32') {
+                        // Use custom u32-prefixed option
+                        return addFragmentImports(fragment`optionU32(${item})`, 'generatedHelpers', 'optionU32');
+                    }
+
+                    // Default: use standard u8-prefixed option
                     return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
                 },
 
@@ -151,6 +156,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 },
 
                 visitRemainderOptionType(node, { self }) {
+                    console.log(`🔧 [RemainderOption] called`);
                     const item = visit(node.item, self);
                     return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
                 },
@@ -182,36 +188,40 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 },
 
                 visitStructType(node, { self }) {
+                    console.log(`   🔧 [BorshSchema] Generating struct with ${node.fields.length} fields`);
+
                     if (node.fields.length === 0) {
                         return addFragmentImports(fragment`struct([])`, 'borsh', 'struct');
                     }
 
                     const fieldSchemas = node.fields.map(field => {
                         const fieldName = camelCase(field.name);
+                        console.log(`🔧 [Field] ${fieldName} - type: ${field.type.kind}`);
                         const fieldSchema = visit(field.type, self);
-                        console.log('fieldSchema', fieldSchema);
-                        // Add field name as parameter to layout functions
+                        console.log(`      - Field: ${fieldName} → ${fieldSchema.content}`);
+
                         const schemaContent = fieldSchema.content;
-                        if (schemaContent.includes('()')) {
-                            // Replace () with (fieldName) for simple layouts
-                            return addFragmentImports(
-                                fragment`${schemaContent.replace('()', `("${fieldName}")`)}`,
-                                'borsh',
-                                [...(fieldSchema.imports.get('borsh') || [])],
-                            );
-                        } else if (schemaContent.includes('(') && schemaContent.includes(')')) {
-                            // For layouts with parameters, add field name as last parameter
-                            return addFragmentImports(
-                                fragment`${schemaContent.replace(')', `, "${fieldName}")`)}`,
-                                'borsh',
-                                [...(fieldSchema.imports.get('borsh') || [])],
-                            );
+
+                        // Add field name as parameter
+                        // For most layouts: u8() -> u8("fieldName")
+                        // For option/array: option(publicKey()) -> option(publicKey(), "fieldName")
+                        let newContent: string;
+                        if (schemaContent.endsWith('()')) {
+                            // Simple layout like u8() - add field name inside parens
+                            newContent = schemaContent.replace('()', `("${fieldName}")`);
                         } else {
-                            // Fallback: wrap in function call
-                            return addFragmentImports(fragment`${fieldSchema}("${fieldName}")`, 'borsh', [
-                                ...(fieldSchema.imports.get('borsh') || []),
-                            ]);
+                            // Nested layout like option(publicKey()) or array(u8(), 10)
+                            // Add field name as the last parameter before closing paren
+                            newContent = schemaContent.replace(/\)$/, `, "${fieldName}")`);
                         }
+
+                        // Create new fragment with modified content but preserve ALL imports
+                        const resultFragment: typeof fieldSchema = {
+                            content: newContent,
+                            imports: fieldSchema.imports
+                        };
+
+                        return resultFragment;
                     });
 
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));

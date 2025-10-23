@@ -9,6 +9,9 @@ export function getInstructionFunctionFragment(
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
 ): Fragment {
+    console.log(`\n   🏗️  [Fragment:Instruction] Building instruction for: ${node.name}`);
+    console.log(`      Accounts: ${node.accounts.length}, Args: ${node.arguments.length}`);
+
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
 
@@ -91,7 +94,11 @@ function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor:
     const argsStruct = structTypeNodeFromInstructionArgumentNodes(node.arguments);
     const schema = visit(argsStruct, borshSchemaVisitor);
 
-    return fragment`const ${schemaName} = ${schema};`;
+    // Manually merge to ensure imports are preserved
+    const constFragment = fragment`const ${schemaName} = `;
+    const semicolonFragment = fragment`;`;
+
+    return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
 }
 
 function getKeysArrayFragment(node: InstructionNode): Fragment {

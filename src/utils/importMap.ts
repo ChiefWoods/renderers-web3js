@@ -54,8 +54,10 @@ function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): 
         generatedInstructions: joinPath('..', 'instructions'),
         generatedPdas: joinPath('..', 'pdas'),
         generatedTypes: joinPath('..', 'types'),
+        generatedHelpers: joinPath('..', 'helpers'),
         web3: '@solana/web3.js',
         borsh: '@coral-xyz/borsh',
+        'buffer-layout': '@solana/buffer-layout',
     };
 
     pathOverrides = { ...DEFAULT_PATH_OVERRIDES, ...pathOverrides };
