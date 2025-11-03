@@ -2,6 +2,7 @@ import { camelCase } from '@codama/nodes';
 import { createRenderMap, mergeRenderMaps } from '@codama/renderers-core';
 import {
     extendVisitor,
+    getResolvedInstructionInputsVisitor,
     LinkableDictionary,
     NodeStack,
     pipe,
@@ -14,13 +15,12 @@ import {
 import {
     getAccountTypeFragment,
     getDefinedTypeFragment,
-    getHelpersFragment,
     getInstructionFunctionFragment,
     getPdaFunctionFragment,
     getProgramConstantsFragment,
     getTypesIndexFragment,
 } from '../fragments';
-import { RenderMapOptions } from '../utils';
+import { extractPdasFromInstructions, RenderMapOptions } from '../utils';
 import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
 import { getTypeVisitor } from './getTypeVisitor-v2';
 
@@ -32,6 +32,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const indexFilename = options.indexFilename ?? 'index';
     const typeVisitor = getTypeVisitor({ stack, typeIndent: options.typeIndent });
     const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
+    const resolvedInstructionInputVisitor = getResolvedInstructionInputsVisitor();
 
     return pipe(
         staticVisitor(() => createRenderMap(), {
@@ -66,7 +67,12 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                     console.log(`   → File: instructions/${camelCase(node.name)}.${extension}`);
                     const result = createRenderMap(
                         `instructions/${camelCase(node.name)}.${extension}`,
-                        getInstructionFunctionFragment(node, typeVisitor, borshSchemaVisitor),
+                        getInstructionFunctionFragment(
+                            node,
+                            typeVisitor,
+                            borshSchemaVisitor,
+                            visit(node, resolvedInstructionInputVisitor),
+                        ),
                     );
                     console.log(`   ✓ Generated`);
                     return result;
@@ -85,6 +91,9 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
                 visitProgram(node, { self }) {
                     console.log(`\n🚀 [RenderMap] Processing program: ${node.name}`);
+
+                    const extractedPdas = extractPdasFromInstructions(node.instructions);
+                    const allPdas = [...node.pdas, ...extractedPdas];
                     console.log(`   Accounts: ${node.accounts.length}`);
                     console.log(`   Types: ${node.definedTypes.length}`);
                     console.log(`   Instructions: ${node.instructions.length}`);
@@ -96,6 +105,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         ...node.definedTypes.map(n => visit(n, self)),
                         ...node.instructions.map(n => visit(n, self)),
                         ...node.pdas.map(n => visit(n, self)),
+                        ...allPdas.map(n => visit(n, self)),
                     ];
 
                     // Only create types index file if there are defined types
@@ -105,12 +115,6 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             createRenderMap(`types/${indexFilename}.${extension}`, getTypesIndexFragment(node)),
                         );
                     }
-
-                    // Always generate helpers file for custom Borsh layouts
-                    console.log(`\n🛠️  [RenderMap] Generating helpers file`);
-                    renderMaps.push(
-                        createRenderMap(`helpers/${indexFilename}.${extension}`, getHelpersFragment()),
-                    );
 
                     const merged = mergeRenderMaps(renderMaps);
                     console.log(`\n✅ [RenderMap] Total files generated: ${Object.keys(merged).length}`);
