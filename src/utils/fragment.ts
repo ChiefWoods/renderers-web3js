@@ -109,3 +109,24 @@ export function getPageFragment(fragments: Fragment[]): Fragment {
     return page;
     // return fragment`${page}\n\n## See also\n\n${links.join('\n')}`;
 }
+
+export function mergeFragmentImports(...fragments: Fragment[]): Fragment {
+    // Merge imports from multiple fragments
+    const mergedImports = new Map<string, Set<string>>();
+
+    fragments.forEach(f => {
+        f.imports?.forEach((imports, module) => {
+            if (!mergedImports.has(module)) {
+                mergedImports.set(module, new Set());
+            }
+            imports.forEach(imp => mergedImports.get(module)!.add(imp));
+        });
+    });
+
+    // Return the last fragment with merged imports
+    const result = fragments[fragments.length - 1] || fragment``;
+    return {
+        ...result,
+        imports: mergedImports,
+    };
+}

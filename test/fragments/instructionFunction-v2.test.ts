@@ -38,13 +38,14 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to
     expect(result.content).toContain('isSigner: true, isWritable: false'); // authority
-    expect(result.content).toContain('Buffer.from(serialize(TransferInstructionDataSchema, args))');
+    expect(result.content).toContain('TransferInstructionDataSchema.encode(args, buffer)');
+    expect(result.content).toContain('TransferInstructionDataSchema.getSpan(buffer)');
 
-    // Check imports
-    expect(result.imports.get('web3')).toContain('PublicKey');
-    expect(result.imports.get('web3')).toContain('TransactionInstruction');
-    expect(result.imports.get('web3')).toContain('AccountMeta');
-    expect(result.imports.get('borsh')).toContain('serialize');
+    // Check imports in content (getCodeFileFragment bakes imports into content)
+    expect(result.content).toContain("import {");
+    expect(result.content).toContain("PublicKey");
+    expect(result.content).toContain("TransactionInstruction");
+    expect(result.content).toContain("AccountMeta");
 });
 
 test('it generates instruction with no arguments', () => {
@@ -79,7 +80,8 @@ test('it generates instruction with no accounts', () => {
     expect(result.content).toContain('export function createLogInstruction');
     expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
-    expect(result.content).toContain('Buffer.from(serialize(LogInstructionDataSchema, args))');
+    expect(result.content).toContain('LogInstructionDataSchema.encode(args, buffer)');
+    expect(result.content).toContain('LogInstructionDataSchema.getSpan(buffer)');
 });
 
 test('it handles optional accounts', () => {
@@ -95,5 +97,6 @@ test('it handles optional accounts', () => {
     const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
 
     expect(result.content).toContain('source: PublicKey');
-    expect(result.content).toContain('delegate?: PublicKey'); // Optional
+    expect(result.content).toContain('delegate?: PublicKey'); // Optional in interface
+    expect(result.content).toContain('...(accounts.delegate ? ['); // Spread operator pattern
 });
