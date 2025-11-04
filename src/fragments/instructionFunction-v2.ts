@@ -113,7 +113,7 @@ function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor:
 
 function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedInstructionInput[]): Fragment {
     if (node.accounts.length === 0) {
-        return fragment`const keys: AccountMeta[] = [];`;
+        return addFragmentImports(fragment`const keys: AccountMeta[] = [];`, 'web3', 'AccountMeta');
     }
 
     const requiredAccounts: Fragment[] = [];
