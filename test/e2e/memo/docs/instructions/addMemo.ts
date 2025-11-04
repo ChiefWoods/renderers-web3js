@@ -9,9 +9,7 @@ const AddMemoInstructionDataSchema = struct([str("memo")]);
 
 export function createAddMemoInstruction(args: AddMemoInstructionArgs, programId: PublicKey): TransactionInstruction {
     const keys: AccountMeta[] = [];
-    const buffer = Buffer.alloc(1000);
-    AddMemoInstructionDataSchema.encode(args, buffer);
-    const data = buffer.subarray(0, AddMemoInstructionDataSchema.getSpan(buffer));
+    const data = Buffer.from(args.memo, 'utf8');
     
     return new TransactionInstruction({ keys, programId, data });
     }

@@ -1,4 +1,10 @@
-import { camelCase, InstructionNode, pascalCase, structTypeNodeFromInstructionArgumentNodes } from '@codama/nodes';
+import {
+    camelCase,
+    InstructionNode,
+    isNode,
+    pascalCase,
+    structTypeNodeFromInstructionArgumentNodes,
+} from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 
 import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
@@ -225,8 +231,34 @@ function getInstructionBuilderFragment(
         );
 
         if (hasUserArgs) {
-            // We have user args to encode
-            if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
+            // Check if arguments require raw encoding (strings without sizePrefixTypeNode wrapper)
+            // vs Borsh encoding (structs, size-prefixed strings, etc.)
+            const requiresRawEncoding = userArgs.some(arg => {
+                // Check if this is a raw string (not wrapped in sizePrefixTypeNode)
+                let type = arg.type;
+                if (type.kind === 'stringTypeNode') {
+                    return true; // Raw string without wrapper
+                }
+                // Check for nested raw strings (e.g., inside structs)
+                // For now, we only handle the simple case: single raw string argument
+                return false;
+            });
+
+            // If single raw string argument, use raw UTF-8 encoding
+            const isSingleRawString =
+                requiresRawEncoding &&
+                userArgs.length === 1 &&
+                userArgs[0].type.kind === 'stringTypeNode' &&
+                !discriminatorArg;
+
+            if (isSingleRawString) {
+                // For raw string encoding (like memo program), encode as UTF-8 bytes directly
+                const stringArgName = camelCase(userArgs[0].name);
+                const stringType = isNode(userArgs[0].type, 'stringTypeNode') ? userArgs[0].type : null;
+                if (!stringType) throw new Error('Expected stringTypeNode');
+                const encoding = stringType.encoding || 'utf8';
+                dataFragment = fragment`const data = Buffer.from(args.${stringArgName}, '${encoding}');`;
+            } else if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
                 const discriminatorHex = discriminatorArg.defaultValue.data;
                 dataFragment = fragment`const buffer = Buffer.alloc(1000);
     ${schemaName}.encode(args, buffer);

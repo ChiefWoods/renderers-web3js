@@ -1,0 +1,17 @@
+{
+    "name": "@codama/e2e-anchor",
+    "private": true,
+    "version": "0.0.0",
+    "type": "commonjs",
+    "sideEffects": false,
+    "license": "MIT",
+    "scripts": {
+        "test": "../../../node_modules/.bin/codama run demo"
+    },
+    "devDependencies": {
+        "@codama/renderers-demo": "file:../../.."
+    },
+    "dependencies": {
+        "@codama/nodes-from-anchor": "^1.2.9"
+    }
+}
