@@ -127,16 +127,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                 visitOptionType(node, { self }) {
                     const item = visit(node.item, self);
 
-                    // Check the prefix type - standard borsh option uses u8, but some programs use u32
-                    const prefixFormat = isNode(node.prefix, 'numberTypeNode') ? node.prefix.format : 'u8';
-                    console.log(`🔧 [Option] item: ${item.content}, prefix: ${prefixFormat}`);
-
-                    if (prefixFormat === 'u32') {
-                        // Use custom u32-prefixed option
-                        return addFragmentImports(fragment`optionU32(${item})`, 'generatedHelpers', 'optionU32');
-                    }
-
-                    // Default: use standard u8-prefixed option
+                    // Use standard borsh option (u8-prefixed)
                     return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
                 },
 
@@ -218,7 +209,7 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                         // Create new fragment with modified content but preserve ALL imports
                         const resultFragment: typeof fieldSchema = {
                             content: newContent,
-                            imports: fieldSchema.imports
+                            imports: fieldSchema.imports,
                         };
 
                         return resultFragment;

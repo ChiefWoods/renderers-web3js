@@ -1,5 +1,5 @@
 {
-    "name": "@codama/renderers-js-web3js",
+    "name": "@codama/web3js-legacy",
     "version": "1.0.4",
     "description": "Codama renderer for Web3.js",
     "exports": {
@@ -32,8 +32,7 @@
         "solana",
         "framework",
         "standard",
-        "renderers",
-        "demo"
+        "renderers"
     ],
     "scripts": {
         "build": "rimraf dist && tsup && tsc -p ./tsconfig.declarations.json",

@@ -1,4 +1,4 @@
-# Codama Renderers Demo - Claude Context Document
+# Codama Web3.js Legacy Renderer - Claude Context Document
 
 ## Project Overview
 

@@ -1,0 +1,14 @@
+{
+    "name": "@codama/web3js-legacy-e2e-system_program",
+    "private": true,
+    "version": "0.0.0",
+    "type": "commonjs",
+    "sideEffects": false,
+    "license": "MIT",
+    "scripts": {
+        "test": "../../../node_modules/.bin/codama run demo"
+    },
+    "devDependencies": {
+        "@codama/web3js-legacy": "file:../../.."
+    }
+}

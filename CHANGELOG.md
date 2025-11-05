@@ -1,4 +1,4 @@
-# @codama/renderers-demo
+# @codama/web3js-legacy
 
 ## 1.0.4
 
