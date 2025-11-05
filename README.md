@@ -1,4 +1,4 @@
-# Codama ➤ Web3.js ➤ Legacy
+# Codama ➤ @solana/web3.js
 
 [![npm][npm-image]][npm-url]
 [![npm-downloads][npm-downloads-image]][npm-url]
