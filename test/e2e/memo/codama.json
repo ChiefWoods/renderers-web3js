@@ -3,7 +3,7 @@
     "before": [],
     "scripts": {
         "demo": {
-            "from": "@codama/renderers-demo",
+            "from": "@codama/web3js-legacy",
             "args": ["docs"]
         }
     }

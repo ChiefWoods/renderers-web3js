@@ -1,5 +1,11 @@
-import { Connection, Keypair, LAMPORTS_PER_SOL, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import { createCreateInstruction, DEMOTEST_PROGRAM_ID, fetchStorageAccount } from '../e2e/system/docs/index';
+import { Connection, Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
+import {
+    createCreateInstruction,
+    createDeleteInstruction,
+    createUpdateInstruction,
+    DEMOTEST_PROGRAM_ID,
+    fetchStorageAccount,
+} from '../e2e/system/docs/index';
 
 import { test } from 'vitest';
 import fs from 'fs';
@@ -25,7 +31,7 @@ export function deriveStorageAddress(authority: PublicKey, uuid: string, program
     return pubkey;
 }
 
-test.skip('It should create a storage account', async () => {
+test('It should create a storage account', async () => {
     // load wallet from path
     const wallet = Keypair.fromSecretKey(
         Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
@@ -34,7 +40,7 @@ test.skip('It should create a storage account', async () => {
     console.log('Wallet', wallet.publicKey.toString());
     const balance = await connection.getBalance(wallet.publicKey);
     console.log('Balance', balance);
-    const uuid = '008';
+    const uuid = '010';
 
     const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
     console.log('StorageAccount', storageAccount.toString());
@@ -48,6 +54,62 @@ test.skip('It should create a storage account', async () => {
         {
             text: 'Hello, world!',
             uuid: uuid,
+        },
+        DEMOTEST_PROGRAM_ID,
+    );
+
+    const tx = new Transaction().add(ix);
+    const sig = await connection.sendTransaction(tx, [wallet]);
+    console.log('Transaction sent', sig);
+});
+
+test('It should update a storage account', async () => {
+    // load wallet from path
+    const wallet = Keypair.fromSecretKey(
+        Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
+    );
+    const connection = new Connection('https://devnet.helius-rpc.com/?api-key=3fc11e81-5f24-43cc-a621-6b340ce43c07');
+    console.log('Wallet', wallet.publicKey.toString());
+    const balance = await connection.getBalance(wallet.publicKey);
+    console.log('Balance', balance);
+    const uuid = '010';
+
+    const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
+    console.log('StorageAccount', storageAccount.toString());
+    const ix = createUpdateInstruction(
+        {
+            authority: wallet.publicKey,
+            storageAccount: storageAccount,
+        },
+        {
+            text: 'Updated text!',
+        },
+        DEMOTEST_PROGRAM_ID,
+    );
+    console.log('INXS KEYS', ix.keys);
+    console.log('INXS DATA', ix.data.toString('hex'));
+    const tx = new Transaction().add(ix);
+    const sig = await connection.sendTransaction(tx, [wallet]);
+    console.log('Transaction sent', sig);
+});
+
+test('It should delete a storage account', async () => {
+    // load wallet from path
+    const wallet = Keypair.fromSecretKey(
+        Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
+    );
+    const connection = new Connection('https://devnet.helius-rpc.com/?api-key=3fc11e81-5f24-43cc-a621-6b340ce43c07');
+    console.log('Wallet', wallet.publicKey.toString());
+    const balance = await connection.getBalance(wallet.publicKey);
+    console.log('Balance', balance);
+    const uuid = '010';
+
+    const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
+    console.log('StorageAccount', storageAccount.toString());
+    const ix = createDeleteInstruction(
+        {
+            authority: wallet.publicKey,
+            storageAccount: storageAccount,
         },
         DEMOTEST_PROGRAM_ID,
     );
