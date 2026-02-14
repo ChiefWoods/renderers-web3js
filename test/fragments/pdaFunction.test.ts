@@ -43,7 +43,7 @@ test('it generates PDA function with variable seeds', () => {
     expect(result.content).toContain('PublicKey.findProgramAddressSync(seedsBuffer, programId)');
 
     // Check imports
-    expect(result.imports.get('web3')).toContain('PublicKey');
+    expect(result.content).toContain("import { PublicKey } from '@solana/web3.js'");
 });
 
 test('it generates PDA function with no variable seeds', () => {

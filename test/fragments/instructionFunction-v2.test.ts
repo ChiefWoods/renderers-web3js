@@ -38,7 +38,7 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to
     expect(result.content).toContain('isSigner: true, isWritable: false'); // authority
-    expect(result.content).toContain('TransferInstructionDataSchema.encode(args, buffer)');
+    expect(result.content).toContain('TransferInstructionDataSchema.encode(borshArgs as Record<string, unknown>, buffer)');
     expect(result.content).toContain('TransferInstructionDataSchema.getSpan(buffer)');
 
     // Check imports in content (getCodeFileFragment bakes imports into content)
@@ -80,7 +80,7 @@ test('it generates instruction with no accounts', () => {
     expect(result.content).toContain('export function createLogInstruction');
     expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
-    expect(result.content).toContain('LogInstructionDataSchema.encode(args, buffer)');
+    expect(result.content).toContain('LogInstructionDataSchema.encode(borshArgs as Record<string, unknown>, buffer)');
     expect(result.content).toContain('LogInstructionDataSchema.getSpan(buffer)');
 });
 

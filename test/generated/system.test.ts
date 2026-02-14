@@ -1,121 +1,46 @@
-import { Connection, Keypair, PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import {
-    createCreateInstruction,
-    createDeleteInstruction,
-    createUpdateInstruction,
-    DEMOTEST_PROGRAM_ID,
-    fetchStorageAccount,
-} from '../e2e/system/docs/index';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
-import { test } from 'vitest';
-import fs from 'fs';
+import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { expect, test } from 'vitest';
 
-test('It should fetch a storage account', async () => {
-    const connection = new Connection('https://api.devnet.solana.com');
-    const address = new PublicKey('7sY1wM8eSpFmLAjhb1jgzTgx6JxRQ7gSq8d2cc4D6MBw');
-    const res = await fetchStorageAccount(connection, address);
-    console.log('Account data', res);
-});
+import { createTransferSolInstruction, SYSTEM_PROGRAM_ID } from '../e2e/system_program/docs/index';
 
-// test('It should fetch a mint account', async () => {
-//     const connection = new Connection('https://api.devnet.solana.com');
-//     const address = new PublicKey('7sY1wM8eSpFmLAjhb1jgzTgx6JxRQ7gSq8d2cc4D6MBw');
-//     const res = await fetchMintAccount(connection, address);
-//     console.log('Account data', res);
-// });
-
-export function deriveStorageAddress(authority: PublicKey, uuid: string, programId: PublicKey): PublicKey {
-    const seeds = [Buffer.from('storage'), authority.toBytes(), Buffer.from(uuid)];
-
-    const [pubkey] = PublicKey.findProgramAddressSync(seeds, programId);
-    return pubkey;
+function loadWallet(): Keypair {
+    const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
+    const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
+    return Keypair.fromSecretKey(Uint8Array.from(secret));
 }
 
-test('It should create a storage account', async () => {
-    // load wallet from path
-    const wallet = Keypair.fromSecretKey(
-        Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
-    );
-    const connection = new Connection('https://devnet.helius-rpc.com/?api-key=3fc11e81-5f24-43cc-a621-6b340ce43c07');
-    console.log('Wallet', wallet.publicKey.toString());
-    const balance = await connection.getBalance(wallet.publicKey);
-    console.log('Balance', balance);
-    const uuid = '010';
+function getConnection(): Connection {
+    const rpcUrl = process.env.SOLANA_RPC_URL ?? 'https://api.devnet.solana.com';
+    return new Connection(rpcUrl, 'confirmed');
+}
 
-    const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
-    console.log('StorageAccount', storageAccount.toString());
-    const ix = createCreateInstruction(
-        {
-            payer: wallet.publicKey,
-            authority: wallet.publicKey,
-            storageAccount: storageAccount,
-            systemProgram: SystemProgram.programId,
-        },
-        {
-            text: 'Hello, world!',
-            uuid: uuid,
-        },
-        DEMOTEST_PROGRAM_ID,
-    );
+test('creates transferSol instruction', () => {
+    const source = new PublicKey('11111111111111111111111111111111');
+    const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
 
-    const tx = new Transaction().add(ix);
-    const sig = await connection.sendTransaction(tx, [wallet]);
-    console.log('Transaction sent', sig);
+    const ix = createTransferSolInstruction({ source, destination }, { amount: 5_000n }, SYSTEM_PROGRAM_ID);
+
+    expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
+    expect(ix.keys).toHaveLength(2);
 });
 
-test('It should update a storage account', async () => {
-    // load wallet from path
-    const wallet = Keypair.fromSecretKey(
-        Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
-    );
-    const connection = new Connection('https://devnet.helius-rpc.com/?api-key=3fc11e81-5f24-43cc-a621-6b340ce43c07');
-    console.log('Wallet', wallet.publicKey.toString());
-    const balance = await connection.getBalance(wallet.publicKey);
-    console.log('Balance', balance);
-    const uuid = '010';
+test('sends transfer transaction on-chain', async () => {
+    const wallet = loadWallet();
+    const connection = getConnection();
 
-    const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
-    console.log('StorageAccount', storageAccount.toString());
-    const ix = createUpdateInstruction(
-        {
-            authority: wallet.publicKey,
-            storageAccount: storageAccount,
-        },
-        {
-            text: 'Updated text!',
-        },
-        DEMOTEST_PROGRAM_ID,
+    const ix = createTransferSolInstruction(
+        { source: wallet.publicKey, destination: wallet.publicKey },
+        { amount: 5_000n },
+        SYSTEM_PROGRAM_ID,
     );
-    console.log('INXS KEYS', ix.keys);
-    console.log('INXS DATA', ix.data.toString('hex'));
+
     const tx = new Transaction().add(ix);
-    const sig = await connection.sendTransaction(tx, [wallet]);
-    console.log('Transaction sent', sig);
-});
-
-test('It should delete a storage account', async () => {
-    // load wallet from path
-    const wallet = Keypair.fromSecretKey(
-        Buffer.from(JSON.parse(fs.readFileSync('/Users/pratik/.config/solana/id.json', 'utf8'))),
-    );
-    const connection = new Connection('https://devnet.helius-rpc.com/?api-key=3fc11e81-5f24-43cc-a621-6b340ce43c07');
-    console.log('Wallet', wallet.publicKey.toString());
-    const balance = await connection.getBalance(wallet.publicKey);
-    console.log('Balance', balance);
-    const uuid = '010';
-
-    const storageAccount = deriveStorageAddress(wallet.publicKey, uuid, DEMOTEST_PROGRAM_ID);
-    console.log('StorageAccount', storageAccount.toString());
-    const ix = createDeleteInstruction(
-        {
-            authority: wallet.publicKey,
-            storageAccount: storageAccount,
-        },
-        DEMOTEST_PROGRAM_ID,
-    );
-    console.log('INXS KEYS', ix.keys);
-    console.log('INXS DATA', ix.data.toString('hex'));
-    const tx = new Transaction().add(ix);
-    const sig = await connection.sendTransaction(tx, [wallet]);
-    console.log('Transaction sent', sig);
+    const sig = await sendAndConfirmTransaction(connection, tx, [wallet]);
+    console.log('TRANSFER', sig);
+    expect(typeof sig).toBe('string');
+    expect(sig.length).toBeGreaterThan(0);
 });

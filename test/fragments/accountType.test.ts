@@ -30,13 +30,13 @@ test('it generates account with struct data', () => {
     // Check Borsh schema
     expect(result.content).toContain('const TokenAccountDataSchema');
     expect(result.content).toContain('struct([');
-    expect(result.content).toContain("['amount', u64()]");
-    expect(result.content).toContain("['owner', publicKey()]");
-    expect(result.content).toContain("['delegate', publicKey()]");
+    expect(result.content).toContain('u64("amount")');
+    expect(result.content).toContain('publicKey("owner")');
+    expect(result.content).toContain('publicKey("delegate")');
 
     // Check deserialize function
     expect(result.content).toContain('export function deserializeTokenAccount(data: Buffer): TokenAccountData');
-    expect(result.content).toContain('return deserialize(TokenAccountDataSchema, data)');
+    expect(result.content).toContain('return TokenAccountDataSchema.decode(data)');
 
     // Check fetch function
     expect(result.content).toContain('export async function fetchTokenAccount');
@@ -49,12 +49,8 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain('deserializeTokenAccount(accountInfo.data)');
 
     // Check imports
-    expect(result.imports.get('web3')).toContain('PublicKey');
-    expect(result.imports.get('web3')).toContain('Connection');
-    expect(result.imports.get('borsh')).toContain('deserialize');
-    expect(result.imports.get('borsh')).toContain('struct');
-    expect(result.imports.get('borsh')).toContain('u64');
-    expect(result.imports.get('borsh')).toContain('publicKey');
+    expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
+    expect(result.content).toContain("import { publicKey, struct, u64 } from '@coral-xyz/borsh'");
 });
 
 test('it generates account with simple data', () => {

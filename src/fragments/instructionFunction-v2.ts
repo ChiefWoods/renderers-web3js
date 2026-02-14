@@ -2,19 +2,86 @@ import {
     camelCase,
     InstructionNode,
     isNode,
+    NumberTypeNode,
     pascalCase,
     structTypeNodeFromInstructionArgumentNodes,
 } from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 
 import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
-import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
+import { BorshSchemaVisitor, getValueVisitor, TypeVisitor } from '../visitors';
+
+function getUserArgs(node: InstructionNode) {
+    return node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+}
+
+function getDiscriminatorArg(node: InstructionNode) {
+    return node.arguments.find(
+        arg => arg.defaultValueStrategy === 'omitted' && arg.name === 'discriminator' && !!arg.defaultValue,
+    );
+}
+
+function usesRawStringEncoding(node: InstructionNode) {
+    const userArgs = getUserArgs(node);
+    const discriminatorArg = getDiscriminatorArg(node);
+    return userArgs.length === 1 && userArgs[0].type.kind === 'stringTypeNode' && !discriminatorArg;
+}
+
+function getNumericDiscriminatorBufferFragment(
+    bufferName: string,
+    discriminatorValue: Fragment,
+    discriminatorType: NumberTypeNode,
+): Fragment {
+    const endian = discriminatorType.endian === 'be' ? 'BE' : 'LE';
+    const endianLower = discriminatorType.endian === 'be' ? 'be' : 'le';
+    switch (discriminatorType.format) {
+        case 'u8':
+            return fragment`const ${bufferName} = Buffer.alloc(1);
+    ${bufferName}.writeUInt8(Number(${discriminatorValue}), 0);`;
+        case 'u16':
+            return fragment`const ${bufferName} = Buffer.alloc(2);
+    ${bufferName}.writeUInt16${endian}(Number(${discriminatorValue}), 0);`;
+        case 'u32':
+            return fragment`const ${bufferName} = Buffer.alloc(4);
+    ${bufferName}.writeUInt32${endian}(Number(${discriminatorValue}), 0);`;
+        case 'u64':
+            return fragment`const ${bufferName} = Buffer.alloc(8);
+    ${bufferName}.writeBigUInt64${endian}(BigInt(${discriminatorValue}), 0);`;
+        case 'i8':
+            return fragment`const ${bufferName} = Buffer.alloc(1);
+    ${bufferName}.writeInt8(Number(${discriminatorValue}), 0);`;
+        case 'i16':
+            return fragment`const ${bufferName} = Buffer.alloc(2);
+    ${bufferName}.writeInt16${endian}(Number(${discriminatorValue}), 0);`;
+        case 'i32':
+            return fragment`const ${bufferName} = Buffer.alloc(4);
+    ${bufferName}.writeInt32${endian}(Number(${discriminatorValue}), 0);`;
+        case 'i64':
+            return fragment`const ${bufferName} = Buffer.alloc(8);
+    ${bufferName}.writeBigInt64${endian}(BigInt(${discriminatorValue}), 0);`;
+        case 'u128':
+            return addFragmentImports(
+                fragment`const ${bufferName} = new BN(String(${discriminatorValue})).toArrayLike(Buffer, '${endianLower}', 16);`,
+                'bn.js',
+                'BN',
+            );
+        case 'i128':
+            return addFragmentImports(
+                fragment`const ${bufferName} = new BN(String(${discriminatorValue})).toTwos(128).toArrayLike(Buffer, '${endianLower}', 16);`,
+                'bn.js',
+                'BN',
+            );
+        default:
+            return fragment`const ${bufferName} = Buffer.alloc(4);
+    ${bufferName}.writeUInt32LE(Number(${discriminatorValue}), 0);`;
+    }
+}
 
 export function getInstructionFunctionFragment(
     node: InstructionNode,
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
-    resolvedInputs: ResolvedInstructionInput[],
+    resolvedInputs: ResolvedInstructionInput[] = [],
 ): Fragment {
     console.log(`\n   🏗️  [Fragment:Instruction] Building instruction for: ${node.name}`);
     console.log(`      Accounts: ${node.accounts.length}, Args: ${node.arguments.length}`);
@@ -104,7 +171,10 @@ function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor:
     }
 
     // Filter out omitted arguments (like discriminators) - they should not be in the schema
-    const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+    const userArgs = getUserArgs(node);
+    if (userArgs.length === 0 || usesRawStringEncoding(node)) {
+        return fragment``;
+    }
 
     // Create a struct type from only the user-facing arguments
     const argsStruct = structTypeNodeFromInstructionArgumentNodes(userArgs);
@@ -191,7 +261,7 @@ function getInstructionBuilderFragment(
     const schemaName = `${name}InstructionDataSchema`;
 
     // Check if we have user-facing args (non-omitted)
-    const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+    const userArgs = getUserArgs(node);
     const hasUserArgs = userArgs.length > 0;
 
     // Build function parameters
@@ -223,12 +293,7 @@ function getInstructionBuilderFragment(
     let dataFragment: Fragment;
     if (hasArgs) {
         // Get discriminator from omitted args
-        const discriminatorArg = node.arguments.find(
-            arg =>
-                arg.defaultValueStrategy === 'omitted' &&
-                arg.name === 'discriminator' &&
-                arg.defaultValue?.kind === 'bytesValueNode',
-        );
+        const discriminatorArg = getDiscriminatorArg(node);
 
         if (hasUserArgs) {
             // Check if arguments require raw encoding (strings without sizePrefixTypeNode wrapper)
@@ -260,21 +325,89 @@ function getInstructionBuilderFragment(
                 dataFragment = fragment`const data = Buffer.from(args.${stringArgName}, '${encoding}');`;
             } else if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
                 const discriminatorHex = discriminatorArg.defaultValue.data;
-                dataFragment = fragment`const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode(args, buffer);
+                dataFragment = addFragmentImports(
+                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
+        if (typeof value === 'bigint') return new BN(value.toString());
+        if (Array.isArray(value)) return value.map(mapBigIntToBn);
+        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+            return Object.fromEntries(
+                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
+            );
+        }
+        return value;
+    };
+    const borshArgs = mapBigIntToBn(args);
+    const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
     const instructionData = buffer.subarray(0, ${schemaName}.getSpan(buffer));
     const discriminator = Buffer.from('${discriminatorHex}', 'hex');
-    const data = Buffer.concat([discriminator, instructionData]);`;
+    const data = Buffer.concat([discriminator, instructionData]);`,
+                    'bn.js',
+                    'BN',
+                );
+            } else if (
+                discriminatorArg &&
+                discriminatorArg.defaultValue?.kind === 'numberValueNode' &&
+                discriminatorArg.type.kind === 'numberTypeNode'
+            ) {
+                const discriminatorValue = visit(discriminatorArg.defaultValue, getValueVisitor());
+                const discriminatorFragment = getNumericDiscriminatorBufferFragment(
+                    'discriminator',
+                    discriminatorValue,
+                    discriminatorArg.type,
+                );
+                dataFragment = addFragmentImports(
+                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
+        if (typeof value === 'bigint') return new BN(value.toString());
+        if (Array.isArray(value)) return value.map(mapBigIntToBn);
+        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+            return Object.fromEntries(
+                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
+            );
+        }
+        return value;
+    };
+    const borshArgs = mapBigIntToBn(args);
+    const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
+    const instructionData = buffer.subarray(0, ${schemaName}.getSpan(buffer));
+    ${discriminatorFragment}
+    const data = Buffer.concat([discriminator, instructionData]);`,
+                    'bn.js',
+                    'BN',
+                );
             } else {
-                dataFragment = fragment`const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode(args, buffer);
-    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`;
+                dataFragment = addFragmentImports(
+                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
+        if (typeof value === 'bigint') return new BN(value.toString());
+        if (Array.isArray(value)) return value.map(mapBigIntToBn);
+        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
+            return Object.fromEntries(
+                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
+            );
+        }
+        return value;
+    };
+    const borshArgs = mapBigIntToBn(args);
+    const buffer = Buffer.alloc(1000);
+    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
+    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`,
+                    'bn.js',
+                    'BN',
+                );
             }
         } else {
             // No user args, just discriminator
             if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
                 const discriminatorHex = discriminatorArg.defaultValue.data;
                 dataFragment = fragment`const data = Buffer.from('${discriminatorHex}', 'hex');`;
+            } else if (
+                discriminatorArg &&
+                discriminatorArg.defaultValue?.kind === 'numberValueNode' &&
+                discriminatorArg.type.kind === 'numberTypeNode'
+            ) {
+                const discriminatorValue = visit(discriminatorArg.defaultValue, getValueVisitor());
+                dataFragment = getNumericDiscriminatorBufferFragment('data', discriminatorValue, discriminatorArg.type);
             } else {
                 dataFragment = fragment`const data = Buffer.alloc(0);`;
             }
@@ -363,16 +496,24 @@ function getInputDefaultFragment(input: ResolvedInstructionInput, node: Instruct
             // Build seeds object from defaultValue.seeds
             const seedsEntries: Fragment[] = [];
 
-            defaultValue.seeds.forEach((seedValue: any) => {
-                const seedName = camelCase(seedValue.name);
+            defaultValue.seeds.forEach(seedValue => {
+                if (!seedValue || typeof seedValue !== 'object') return;
+                if (!('name' in seedValue) || !('value' in seedValue)) return;
+                const seedNameValue = seedValue.name;
+                const seedNodeValue = seedValue.value;
+                if (typeof seedNameValue !== 'string') return;
+                if (!seedNodeValue || typeof seedNodeValue !== 'object') return;
+                if (!('kind' in seedNodeValue)) return;
+                const seedName = camelCase(seedNameValue);
 
-                if (seedValue.value.kind === 'accountValueNode') {
-                    const accountRef = camelCase(seedValue.value.name);
+                const seedKind = (seedNodeValue as { kind: string }).kind;
+                if (seedKind === 'accountValueNode' && 'name' in seedNodeValue) {
+                    const accountRef = camelCase(String(seedNodeValue.name));
                     seedsEntries.push(fragment`${seedName}: accounts.${accountRef}`);
-                } else if (seedValue.value.kind === 'argumentValueNode') {
-                    const argRef = camelCase(seedValue.value.name);
+                } else if (seedKind === 'argumentValueNode' && 'name' in seedNodeValue) {
+                    const argRef = camelCase(String(seedNodeValue.name));
                     seedsEntries.push(fragment`${seedName}: args.${argRef}`);
-                } else if (seedValue.value.kind === 'identityValueNode') {
+                } else if (seedKind === 'identityValueNode') {
                     // Find first signer account
                     const signerAccount = node.accounts.find(acc => acc.isSigner === true || acc.isSigner === 'either');
                     if (signerAccount) {
