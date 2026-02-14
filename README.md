@@ -3,31 +3,38 @@
 [![npm][npm-image]][npm-url]
 [![npm-downloads][npm-downloads-image]][npm-url]
 
-[npm-downloads-image]: https://img.shields.io/npm/dm/@codama/web3js-legacy.svg?style=flat
-[npm-image]: https://img.shields.io/npm/v/@codama/web3js-legacy.svg?style=flat&label=%40codama%2Fweb3js-legacy
-[npm-url]: https://www.npmjs.com/package/@codama/web3js-legacy
+[npm-downloads-image]: https://img.shields.io/npm/dm/@pratikbuilds/web3js-legacy.svg?style=flat
+[npm-image]: https://img.shields.io/npm/v/@pratikbuilds/web3js-legacy.svg?style=flat&label=%40pratikbuilds%2Fweb3js-legacy
+[npm-url]: https://www.npmjs.com/package/@pratikbuilds/web3js-legacy
 
 This package provides a Codama renderer for Web3.js to generate type-safe client code for Solana programs.
+NPM package path: `@pratikbuilds/web3js-legacy`.
 
 ## Installation
 
 ```sh
-pnpm install @codama/web3js-legacy
+pnpm add @pratikbuilds/web3js-legacy
 ```
 
 ## Usage
 
-Add the following script to your Codama configuration file.
+Add the following script to your Codama configuration file (e.g. `codama.json`).
 
 ```json
 {
     "scripts": {
-        "demo": {
-            "from": "@codama/web3js-legacy",
+        "web3js": {
+            "from": "@pratikbuilds/web3js-legacy",
             "args": ["docs"]
         }
     }
 }
+```
+
+Then run your Codama script:
+
+```sh
+codama run web3js
 ```
 
 ## TODO

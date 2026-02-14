@@ -1,6 +1,6 @@
 {
-    "name": "@codama/web3js-legacy",
-    "version": "1.0.4",
+    "name": "@pratikbuilds/web3js-legacy",
+    "version": "0.0.1",
     "description": "Codama renderer for Web3.js",
     "exports": {
         "types": "./dist/types/index.d.ts",
