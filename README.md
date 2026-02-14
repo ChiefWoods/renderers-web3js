@@ -28,7 +28,7 @@ Add the following script to your Codama configuration file (e.g. `codama.json`).
     "scripts": {
         "web3js": {
             "from": "@pratikbuilds/web3js-legacy",
-            "args": ["docs"]
+            "args": ["folder_name"]
         }
     }
 }
