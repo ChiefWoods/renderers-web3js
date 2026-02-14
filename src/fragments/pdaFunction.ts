@@ -1,7 +1,7 @@
 import { camelCase, PdaNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
+import { addFragmentImports, encodeStringValue, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
 import { TypeVisitor } from '../visitors';
 
 export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor): Fragment {
@@ -77,8 +77,14 @@ function getSeedsArrayFragment(node: PdaNode): Fragment {
         if (seed.kind === 'constantPdaSeedNode') {
             // Constant seed - encode the value directly based on its type
             if (seed.type.kind === 'bytesTypeNode' && seed.value.kind === 'bytesValueNode') {
-                const hexData = seed.value.data;
-                return fragment`Buffer.from('${hexData}', 'hex')`;
+                const bytes = [...encodeStringValue(seed.value.encoding, seed.value.data)];
+                const ascii = Buffer.from(bytes).toString('utf8');
+                const isPrintableAscii = ascii.length > 0 && /^[\x20-\x7E]+$/.test(ascii);
+                const roundTrips = isPrintableAscii && Buffer.from(ascii, 'utf8').equals(Buffer.from(bytes));
+                if (roundTrips) {
+                    return fragment`Buffer.from(${JSON.stringify(ascii)}, 'utf8')`;
+                }
+                return fragment`Buffer.from([${bytes.join(', ')}])`;
             } else if (seed.type.kind === 'stringTypeNode' && seed.value.kind === 'stringValueNode') {
                 // For string seeds, encode as UTF-8
                 return fragment`Buffer.from('${seed.value.string}', 'utf8')`;

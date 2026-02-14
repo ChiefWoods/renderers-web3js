@@ -1,4 +1,7 @@
 import {
+    bytesTypeNode,
+    bytesValueNode,
+    constantPdaSeedNode,
     constantPdaSeedNodeFromString,
     pdaNode,
     publicKeyTypeNode,
@@ -103,4 +106,16 @@ test('it generates proper function signature', () => {
     expect(result.content).toMatch(
         /export function findUserAccountPda\(seeds: UserAccountPdaSeeds, programId: PublicKey\): \[PublicKey, number\]/,
     );
+});
+
+test('it encodes constant byte seeds from their declared encoding', () => {
+    const node = pdaNode({
+        name: 'storageAccount',
+        seeds: [constantPdaSeedNode(bytesTypeNode(), bytesValueNode('base58', '5NmF1bZtRi'))],
+    });
+
+    const result = getPdaFunctionFragment(node, getTypeVisitor());
+
+    expect(result.content).toContain("Buffer.from(\"storage\", 'utf8')");
+    expect(result.content).not.toContain("Buffer.from('5NmF1bZtRi', 'hex')");
 });
