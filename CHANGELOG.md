@@ -1,4 +1,4 @@
-# @codama/web3js-legacy
+# @pratikbuilds/web3js-legacy
 
 ## 0.0.2
 

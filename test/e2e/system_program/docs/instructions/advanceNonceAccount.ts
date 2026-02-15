@@ -5,6 +5,11 @@ export interface AdvanceNonceAccountInstructionAccounts {
     recentBlockhashesSysvar: PublicKey;
     nonceAuthority: PublicKey;
 }
+
+
+
+
+
 export function createAdvanceNonceAccountInstruction(accounts: AdvanceNonceAccountInstructionAccounts, programId: PublicKey): TransactionInstruction {
     const keys: AccountMeta[] = [
         { pubkey: accounts.nonceAccount, isSigner: false, isWritable: true },

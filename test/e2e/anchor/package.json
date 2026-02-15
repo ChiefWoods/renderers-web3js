@@ -1,5 +1,5 @@
 {
-    "name": "@codama/e2e-anchor",
+    "name": "@pratikbuilds/e2e-anchor",
     "private": true,
     "version": "0.0.0",
     "type": "commonjs",
@@ -9,7 +9,7 @@
         "test": "../../../node_modules/.bin/codama run demo"
     },
     "devDependencies": {
-        "@codama/web3js-legacy": "file:../../.."
+        "@pratikbuilds/web3js-legacy": "file:../../.."
     },
     "dependencies": {
         "@codama/nodes-from-anchor": "^1.2.9"
