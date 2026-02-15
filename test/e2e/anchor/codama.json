@@ -3,7 +3,7 @@
     "before": [],
     "scripts": {
         "demo": {
-            "from": "@codama/web3js-legacy",
+            "from": "@pratikbuilds/web3js-legacy",
             "args": ["docs"]
         }
     }
