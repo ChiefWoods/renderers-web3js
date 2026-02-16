@@ -115,12 +115,11 @@ function getSeedEncodingFragment(seedName: string, seedType: any): Fragment {
     } else if (seedType.kind === 'stringTypeNode') {
         return fragment`Buffer.from(seeds.${seedName}, 'utf8')`;
     } else if (seedType.kind === 'sizePrefixTypeNode' && seedType.type.kind === 'stringTypeNode') {
-        // For Anchor-style strings with size prefix, we need to encode properly
-        // Create a temporary schema and encode the string
+        // Anchor-style size-prefixed UTF-8 string seed.
         return addFragmentImports(
-            fragment`(() => { const schema = struct([['value', str()]]); const buf = Buffer.alloc(1000); schema.encode({ value: seeds.${seedName} }, buf); return buf.subarray(0, schema.getSpan(buf)); })()`,
-            'borsh',
-            ['struct', 'str'],
+            fragment`Buffer.from(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()).encode(seeds.${seedName}))`,
+            'codecs',
+            ['addEncoderSizePrefix', 'getUtf8Encoder', 'getU32Encoder'],
         );
     } else if (seedType.kind === 'numberTypeNode') {
         // Numbers need to be encoded as buffers

@@ -5,6 +5,23 @@ import { addFragmentImports, fragment, mergeFragments } from '../utils';
 
 export type BorshSchemaVisitor = ReturnType<typeof getBorshSchemaVisitor>;
 
+function isDefaultU32LePrefix(prefix: unknown): boolean {
+    const resolved = resolveNestedTypeNode(prefix as Parameters<typeof resolveNestedTypeNode>[0]);
+    return resolved.kind === 'numberTypeNode' && resolved.format === 'u32' && resolved.endian === 'le';
+}
+
+function getNumberCodec(format: string, endian: 'le' | 'be') {
+    const fn = `get${format[0].toUpperCase()}${format.slice(1)}Codec`;
+    if (endian === 'be') {
+        return addFragmentImports(
+            fragment`${fn}({ endian: Endian.Big })`,
+            'codecs',
+            [fn, 'Endian'],
+        );
+    }
+    return addFragmentImports(fragment`${fn}()`, 'codecs', fn);
+}
+
 export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
 
@@ -15,224 +32,286 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
         visitor =>
             extendVisitor(visitor, {
                 visitAmountType(node, { self }) {
-                    // Ignore amount metadata, just use the underlying number type
                     return visit(node.number, self);
                 },
 
                 visitArrayType(node, { self }) {
                     const item = visit(node.item, self);
 
-                    // Handle fixed size arrays
                     if (isNode(node.count, 'fixedCountNode')) {
-                        return addFragmentImports(fragment`array(${item}, ${node.count.value})`, 'borsh', 'array');
+                        return addFragmentImports(
+                            fragment`getArrayCodec(${item}, { size: ${node.count.value} })`,
+                            'codecs',
+                            'getArrayCodec',
+                        );
                     }
 
-                    // Variable size arrays (prefixed with u32 length)
-                    return addFragmentImports(fragment`array(${item})`, 'borsh', 'array');
+                    if (isNode(node.count, 'remainderCountNode')) {
+                        return addFragmentImports(
+                            fragment`getArrayCodec(${item}, { size: 'remainder' })`,
+                            'codecs',
+                            'getArrayCodec',
+                        );
+                    }
+
+                    if (!isDefaultU32LePrefix(node.count.prefix)) {
+                        const size = visit(node.count.prefix, self);
+                        return addFragmentImports(
+                            fragment`getArrayCodec(${item}, { size: ${size} })`,
+                            'codecs',
+                            'getArrayCodec',
+                        );
+                    }
+
+                    return addFragmentImports(fragment`getArrayCodec(${item})`, 'codecs', 'getArrayCodec');
                 },
 
                 visitBooleanType() {
-                    return addFragmentImports(fragment`bool()`, 'borsh', 'bool');
+                    return addFragmentImports(fragment`getBooleanCodec()`, 'codecs', 'getBooleanCodec');
                 },
 
                 visitBytesType() {
-                    return addFragmentImports(fragment`array(u8())`, 'borsh', ['array', 'u8']);
+                    return addFragmentImports(fragment`getBytesCodec()`, 'codecs', 'getBytesCodec');
                 },
 
                 visitDateTimeType(node, { self }) {
-                    // DateTime is just a number underneath
                     return visit(node.number, self);
                 },
 
                 visitDefinedType(node, { self }) {
-                    // For defined types, return the schema for the underlying type
                     return visit(node.type, self);
                 },
 
                 visitDefinedTypeLink(node) {
-                    // Reference to another schema
-                    const schemaName = `${camelCase(node.name)}Schema`;
-                    console.log(`🔗 [DefinedTypeLink] Importing schema: ${schemaName} from 'generatedTypes'`);
-                    return addFragmentImports(fragment`${schemaName}`, 'generatedTypes', schemaName);
-                },
-
-                visitEnumType(node) {
-                    if (isScalarEnum(node)) {
-                        // Scalar enums are represented as u8 discriminator
-                        return addFragmentImports(fragment`u8()`, 'borsh', 'u8');
-                    }
-
-                    // Data enums (tagged unions) are not directly supported by @coral-xyz/borsh
-                    // They would need to be manually implemented with custom serialization
-                    throw new Error(
-                        `Complex enum types are not supported by @coral-xyz/borsh. ` +
-                            `Enum with variants needs custom implementation.`,
+                    const codecName = `${camelCase(node.name)}Codec`;
+                    return addFragmentImports(
+                        fragment`${codecName}`,
+                        `generatedTypes/${camelCase(node.name)}`,
+                        codecName,
                     );
                 },
 
-                visitEnumEmptyVariantType() {
-                    // Empty variant: unit struct
-                    return addFragmentImports(fragment`struct([])`, 'borsh', 'struct');
+                visitEnumType(node, { self }) {
+                    if (isScalarEnum(node)) {
+                        return addFragmentImports(fragment`getU8Codec()`, 'codecs', 'getU8Codec');
+                    }
+
+                    const variants = node.variants.map(variant => visit(variant, self));
+                    const variantsFragment = mergeFragments(variants, cs => cs.join(', '));
+                    return addFragmentImports(
+                        fragment`getDiscriminatedUnionCodec([${variantsFragment}])`,
+                        'codecs',
+                        'getDiscriminatedUnionCodec',
+                    );
+                },
+
+                visitEnumEmptyVariantType(node) {
+                    return addFragmentImports(
+                        fragment`['${camelCase(node.name).replace(/^./, c => c.toUpperCase())}', getUnitCodec()]`,
+                        'codecs',
+                        'getUnitCodec',
+                    );
                 },
 
                 visitEnumStructVariantType(node, { self }) {
-                    // Struct variant
                     const fields = resolveNestedTypeNode(node.struct).fields;
                     const fieldSchemas = fields.map(field => {
                         const fieldName = camelCase(field.name);
                         const fieldSchema = visit(field.type, self);
-                        return fragment`${fieldSchema}("${fieldName}")`;
+                        return fragment`['${fieldName}', ${fieldSchema}]`;
                     });
 
+                    const variantName = camelCase(node.name).replace(/^./, c => c.toUpperCase());
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
-                    return addFragmentImports(fragment`struct([${fieldsContent}])`, 'borsh', 'struct');
+                    return addFragmentImports(
+                        fragment`['${variantName}', getStructCodec([${fieldsContent}])]`,
+                        'codecs',
+                        'getStructCodec',
+                    );
                 },
 
                 visitEnumTupleVariantType(node, { self }) {
-                    // Tuple variant: convert to struct with 'fields' array
                     const tupleSchema = visit(node.tuple, self);
-                    return addFragmentImports(fragment`struct([${tupleSchema}("fields")])`, 'borsh', 'struct');
+                    const variantName = camelCase(node.name).replace(/^./, c => c.toUpperCase());
+                    return addFragmentImports(
+                        fragment`['${variantName}', getStructCodec([['fields', ${tupleSchema}]])]`,
+                        'codecs',
+                        'getStructCodec',
+                    );
                 },
 
                 visitFixedSizeType(node, { self }) {
-                    // Handle fixed size bytes as fixed-size arrays
-                    if (isNode(node.type, 'bytesTypeNode')) {
-                        return addFragmentImports(fragment`array(u8(), ${node.size})`, 'borsh', ['array', 'u8']);
-                    }
-                    // For other types, ignore fixed size wrapper
-                    return visit(node.type, self);
+                    const codec = visit(node.type, self);
+                    return addFragmentImports(fragment`fixCodecSize(${codec}, ${node.size})`, 'codecs', 'fixCodecSize');
                 },
 
                 visitHiddenPrefixType(node, { self }) {
-                    // Ignore hidden prefix wrapper
                     return visit(node.type, self);
                 },
 
                 visitHiddenSuffixType(node, { self }) {
-                    // Ignore hidden suffix wrapper
                     return visit(node.type, self);
                 },
 
-                visitMapType() {
-                    // Map types are not supported by @coral-xyz/borsh
-                    throw new Error('Map types are not supported by @coral-xyz/borsh');
+                visitMapType(node, { self }) {
+                    const key = visit(node.key, self);
+                    const value = visit(node.value, self);
+
+                    if (isNode(node.count, 'fixedCountNode')) {
+                        return addFragmentImports(
+                            fragment`getMapCodec(${key}, ${value}, { size: ${node.count.value} })`,
+                            'codecs',
+                            'getMapCodec',
+                        );
+                    }
+
+                    if (isNode(node.count, 'remainderCountNode')) {
+                        return addFragmentImports(
+                            fragment`getMapCodec(${key}, ${value}, { size: 'remainder' })`,
+                            'codecs',
+                            'getMapCodec',
+                        );
+                    }
+
+                    if (!isDefaultU32LePrefix(node.count.prefix)) {
+                        const size = visit(node.count.prefix, self);
+                        return addFragmentImports(
+                            fragment`getMapCodec(${key}, ${value}, { size: ${size} })`,
+                            'codecs',
+                            'getMapCodec',
+                        );
+                    }
+
+                    return addFragmentImports(fragment`getMapCodec(${key}, ${value})`, 'codecs', 'getMapCodec');
                 },
 
                 visitNumberType(node) {
-                    const format = node.format;
-                    const fnName = format;
-                    return addFragmentImports(fragment`${fnName}()`, 'borsh', fnName);
+                    return getNumberCodec(node.format, node.endian);
                 },
 
                 visitOptionType(node, { self }) {
                     const item = visit(node.item, self);
-
-                    // Use standard borsh option (u8-prefixed)
-                    return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
+                    return addFragmentImports(fragment`getOptionCodec(${item})`, 'codecs', 'getOptionCodec');
                 },
 
                 visitPostOffsetType(node, { self }) {
-                    // Ignore post offset wrapper
                     return visit(node.type, self);
                 },
 
                 visitPreOffsetType(node, { self }) {
-                    // Ignore pre offset wrapper
                     return visit(node.type, self);
                 },
 
                 visitPublicKeyType() {
-                    // PublicKey is 32 bytes
-                    return addFragmentImports(fragment`publicKey()`, 'borsh', 'publicKey');
+                    let codec = addFragmentImports(
+                        fragment`transformCodec(fixCodecSize(getBytesCodec(), 32), (value: PublicKey) => value.toBytes(), (value) => new PublicKey(value))`,
+                        'codecs',
+                        ['transformCodec', 'fixCodecSize', 'getBytesCodec'],
+                    );
+                    codec = addFragmentImports(codec, 'web3', 'PublicKey');
+                    return codec;
                 },
 
                 visitRemainderOptionType(node, { self }) {
-                    console.log(`🔧 [RemainderOption] called`);
                     const item = visit(node.item, self);
-                    return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
+                    return addFragmentImports(
+                        fragment`getOptionCodec(${item}, { prefix: null })`,
+                        'codecs',
+                        'getOptionCodec',
+                    );
                 },
 
                 visitSentinelType(node, { self }) {
-                    // Ignore sentinel wrapper
                     return visit(node.type, self);
                 },
 
                 visitSetType(node, { self }) {
-                    // Set as array
                     const item = visit(node.item, self);
-                    return addFragmentImports(fragment`array(${item})`, 'borsh', 'array');
+
+                    if (isNode(node.count, 'fixedCountNode')) {
+                        return addFragmentImports(
+                            fragment`getSetCodec(${item}, { size: ${node.count.value} })`,
+                            'codecs',
+                            'getSetCodec',
+                        );
+                    }
+
+                    if (isNode(node.count, 'remainderCountNode')) {
+                        return addFragmentImports(
+                            fragment`getSetCodec(${item}, { size: 'remainder' })`,
+                            'codecs',
+                            'getSetCodec',
+                        );
+                    }
+
+                    if (!isDefaultU32LePrefix(node.count.prefix)) {
+                        const size = visit(node.count.prefix, self);
+                        return addFragmentImports(
+                            fragment`getSetCodec(${item}, { size: ${size} })`,
+                            'codecs',
+                            'getSetCodec',
+                        );
+                    }
+
+                    return addFragmentImports(fragment`getSetCodec(${item})`, 'codecs', 'getSetCodec');
                 },
 
                 visitSizePrefixType(node, { self }) {
-                    // Ignore size prefix wrapper
-                    return visit(node.type, self);
+                    const item = visit(node.type, self);
+                    const prefix = visit(node.prefix, self);
+                    return addFragmentImports(
+                        fragment`addCodecSizePrefix(${item}, ${prefix})`,
+                        'codecs',
+                        'addCodecSizePrefix',
+                    );
                 },
 
                 visitSolAmountType(node, { self }) {
-                    // Sol amount is just a number
                     return visit(node.number, self);
                 },
 
-                visitStringType() {
-                    // UTF-8 string
-                    return addFragmentImports(fragment`str()`, 'borsh', 'str');
+                visitStringType(node) {
+                    switch (node.encoding) {
+                        case 'base16':
+                            return addFragmentImports(fragment`getBase16Codec()`, 'codecs', 'getBase16Codec');
+                        case 'base58':
+                            return addFragmentImports(fragment`getBase58Codec()`, 'codecs', 'getBase58Codec');
+                        case 'base64':
+                            return addFragmentImports(fragment`getBase64Codec()`, 'codecs', 'getBase64Codec');
+                        case 'utf8':
+                        default:
+                            return addFragmentImports(fragment`getUtf8Codec()`, 'codecs', 'getUtf8Codec');
+                    }
                 },
 
                 visitStructType(node, { self }) {
-                    console.log(`   🔧 [BorshSchema] Generating struct with ${node.fields.length} fields`);
-
                     if (node.fields.length === 0) {
-                        return addFragmentImports(fragment`struct([])`, 'borsh', 'struct');
+                        return addFragmentImports(fragment`getStructCodec([])`, 'codecs', 'getStructCodec');
                     }
 
                     const fieldSchemas = node.fields.map(field => {
                         const fieldName = camelCase(field.name);
-                        console.log(`🔧 [Field] ${fieldName} - type: ${field.type.kind}`);
                         const fieldSchema = visit(field.type, self);
-                        console.log(`      - Field: ${fieldName} → ${fieldSchema.content}`);
-
-                        const schemaContent = fieldSchema.content;
-
-                        // Add field name as parameter
-                        // For most layouts: u8() -> u8("fieldName")
-                        // For option/array: option(publicKey()) -> option(publicKey(), "fieldName")
-                        let newContent: string;
-                        if (schemaContent.endsWith('()')) {
-                            // Simple layout like u8() - add field name inside parens
-                            newContent = schemaContent.replace('()', `("${fieldName}")`);
-                        } else {
-                            // Nested layout like option(publicKey()) or array(u8(), 10)
-                            // Add field name as the last parameter before closing paren
-                            newContent = schemaContent.replace(/\)$/, `, "${fieldName}")`);
-                        }
-
-                        // Create new fragment with modified content but preserve ALL imports
-                        const resultFragment: typeof fieldSchema = {
-                            content: newContent,
-                            imports: fieldSchema.imports,
-                        };
-
-                        return resultFragment;
+                        return fragment`['${fieldName}', ${fieldSchema}]`;
                     });
 
                     const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
-                    return addFragmentImports(fragment`struct([${fieldsContent}])`, 'borsh', 'struct');
+                    return addFragmentImports(fragment`getStructCodec([${fieldsContent}])`, 'codecs', 'getStructCodec');
                 },
 
                 visitTupleType(node, { self }) {
-                    // Tuples are not directly supported by @coral-xyz/borsh
-                    // They can be represented as structs with indexed field names
-                    const fieldSchemas = node.items.map((item, index) => {
-                        const fieldSchema = visit(item, self);
-                        return fragment`${fieldSchema}("field${index}")`;
-                    });
-                    const fieldsContent = mergeFragments(fieldSchemas, cs => cs.join(', '));
-                    return addFragmentImports(fragment`struct([${fieldsContent}])`, 'borsh', 'struct');
+                    const itemCodecs = node.items.map(item => visit(item, self));
+                    const fieldsContent = mergeFragments(itemCodecs, cs => cs.join(', '));
+                    return addFragmentImports(fragment`getTupleCodec([${fieldsContent}])`, 'codecs', 'getTupleCodec');
                 },
 
                 visitZeroableOptionType(node, { self }) {
                     const item = visit(node.item, self);
-                    return addFragmentImports(fragment`option(${item})`, 'borsh', 'option');
+                    return addFragmentImports(
+                        fragment`getOptionCodec(${item}, { prefix: null, noneValue: 'zeroes' })`,
+                        'codecs',
+                        'getOptionCodec',
+                    );
                 },
             }),
         visitor => recordNodeStackVisitor(visitor, stack),

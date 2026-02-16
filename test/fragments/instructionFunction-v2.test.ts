@@ -29,7 +29,7 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('authority: PublicKey');
     expect(result.content).toContain('export interface TransferInstructionArgs');
     expect(result.content).toContain('amount: bigint');
-    expect(result.content).toContain('const TransferInstructionDataSchema');
+    expect(result.content).toContain('const TransferInstructionDataCodec');
     expect(result.content).toContain('export function createTransferInstruction');
     expect(result.content).toContain('accounts: TransferInstructionAccounts');
     expect(result.content).toContain('args: TransferInstructionArgs');
@@ -38,8 +38,7 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to
     expect(result.content).toContain('isSigner: true, isWritable: false'); // authority
-    expect(result.content).toContain('TransferInstructionDataSchema.encode(borshArgs as Record<string, unknown>, buffer)');
-    expect(result.content).toContain('TransferInstructionDataSchema.getSpan(buffer)');
+    expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
 
     // Check imports in content (getCodeFileFragment bakes imports into content)
     expect(result.content).toContain("import {");
@@ -76,12 +75,11 @@ test('it generates instruction with no accounts', () => {
 
     expect(result.content).not.toContain('InstructionAccounts');
     expect(result.content).toContain('export interface LogInstructionArgs');
-    expect(result.content).toContain('const LogInstructionDataSchema');
+    expect(result.content).toContain('const LogInstructionDataCodec');
     expect(result.content).toContain('export function createLogInstruction');
     expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
-    expect(result.content).toContain('LogInstructionDataSchema.encode(borshArgs as Record<string, unknown>, buffer)');
-    expect(result.content).toContain('LogInstructionDataSchema.getSpan(buffer)');
+    expect(result.content).toContain('Buffer.from(LogInstructionDataCodec.encode(args))');
 });
 
 test('it handles optional accounts', () => {

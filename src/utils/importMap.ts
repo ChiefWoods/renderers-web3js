@@ -56,13 +56,37 @@ function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): 
         generatedTypes: joinPath('..', 'types'),
         generatedHelpers: joinPath('..', 'helpers'),
         web3: '@solana/web3.js',
-        borsh: '@coral-xyz/borsh',
+        codecs: '@solana/codecs',
         'buffer-layout': '@solana/buffer-layout',
     };
 
     pathOverrides = { ...DEFAULT_PATH_OVERRIDES, ...pathOverrides };
     const newEntries = [...importMap.entries()].map(([path, names]) => {
-        return [pathOverrides[path] ?? path, names] as const;
+        const directOverride = pathOverrides[path];
+        if (directOverride) {
+            return [directOverride, names] as const;
+        }
+
+        // Support direct subpath imports so generated files can target concrete modules
+        // (e.g. generatedTypes/foo -> ../types/foo) instead of going through barrel exports.
+        const generatedPrefixes: Path[] = [
+            'generatedTypes',
+            'generatedAccounts',
+            'generatedInstructions',
+            'generatedPdas',
+            'generatedHelpers',
+        ];
+
+        for (const prefix of generatedPrefixes) {
+            const prefixWithSlash = `${prefix}/`;
+            if (path.startsWith(prefixWithSlash)) {
+                const base = pathOverrides[prefix] ?? prefix;
+                const suffix = path.slice(prefixWithSlash.length);
+                return [joinPath(base, suffix), names] as const;
+            }
+        }
+
+        return [path, names] as const;
     });
 
     return Object.freeze(new Map(newEntries));

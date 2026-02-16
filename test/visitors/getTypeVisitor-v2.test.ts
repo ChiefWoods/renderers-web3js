@@ -110,7 +110,7 @@ test('it renders defined type links with import', () => {
         getTypeVisitor(),
     );
     expect(result.content).toContain('MyCustomType');
-    expect(result.imports.get('generatedTypes')).toContain('MyCustomType');
+    expect(result.imports.get('generatedTypes/myCustomType')).toContain('MyCustomType');
 });
 
 test('it renders accounts as interfaces', () => {

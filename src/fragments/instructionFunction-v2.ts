@@ -60,17 +60,24 @@ function getNumericDiscriminatorBufferFragment(
             return fragment`const ${bufferName} = Buffer.alloc(8);
     ${bufferName}.writeBigInt64${endian}(BigInt(${discriminatorValue}), 0);`;
         case 'u128':
-            return addFragmentImports(
-                fragment`const ${bufferName} = new BN(String(${discriminatorValue})).toArrayLike(Buffer, '${endianLower}', 16);`,
-                'bn.js',
-                'BN',
-            );
+            return fragment`const ${bufferName} = Buffer.alloc(16);
+    {
+        let value = BigInt(${discriminatorValue});
+        for (let i = 0; i < 16; i++) {
+            const offset = '${endianLower}' === 'be' ? 15 - i : i;
+            ${bufferName}[offset] = Number((value >> BigInt(8 * i)) & 0xffn);
+        }
+    }`;
         case 'i128':
-            return addFragmentImports(
-                fragment`const ${bufferName} = new BN(String(${discriminatorValue})).toTwos(128).toArrayLike(Buffer, '${endianLower}', 16);`,
-                'bn.js',
-                'BN',
-            );
+            return fragment`const ${bufferName} = Buffer.alloc(16);
+    {
+        let value = BigInt(${discriminatorValue});
+        if (value < 0) value = (1n << 128n) + value;
+        for (let i = 0; i < 16; i++) {
+            const offset = '${endianLower}' === 'be' ? 15 - i : i;
+            ${bufferName}[offset] = Number((value >> BigInt(8 * i)) & 0xffn);
+        }
+    }`;
         default:
             return fragment`const ${bufferName} = Buffer.alloc(4);
     ${bufferName}.writeUInt32LE(Number(${discriminatorValue}), 0);`;
@@ -164,7 +171,7 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
 
 function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
     const name = pascalCase(node.name);
-    const schemaName = `${name}InstructionDataSchema`;
+    const codecName = `${name}InstructionDataCodec`;
 
     if (node.arguments.length === 0) {
         return fragment``;
@@ -181,7 +188,7 @@ function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor:
     const schema = visit(argsStruct, borshSchemaVisitor);
 
     // Manually merge to ensure imports are preserved
-    const constFragment = fragment`const ${schemaName} = `;
+    const constFragment = fragment`const ${codecName} = `;
     const semicolonFragment = fragment`;`;
 
     return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
@@ -258,7 +265,7 @@ function getInstructionBuilderFragment(
     const functionName = `create${name}Instruction`;
     const accountsType = `${name}InstructionAccounts`;
     const argsType = `${name}InstructionArgs`;
-    const schemaName = `${name}InstructionDataSchema`;
+    const codecName = `${name}InstructionDataCodec`;
 
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);
@@ -325,26 +332,9 @@ function getInstructionBuilderFragment(
                 dataFragment = fragment`const data = Buffer.from(args.${stringArgName}, '${encoding}');`;
             } else if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
                 const discriminatorHex = discriminatorArg.defaultValue.data;
-                dataFragment = addFragmentImports(
-                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
-        if (typeof value === 'bigint') return new BN(value.toString());
-        if (Array.isArray(value)) return value.map(mapBigIntToBn);
-        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-            return Object.fromEntries(
-                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
-            );
-        }
-        return value;
-    };
-    const borshArgs = mapBigIntToBn(args);
-    const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
-    const instructionData = buffer.subarray(0, ${schemaName}.getSpan(buffer));
+                dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
     const discriminator = Buffer.from('${discriminatorHex}', 'hex');
-    const data = Buffer.concat([discriminator, instructionData]);`,
-                    'bn.js',
-                    'BN',
-                );
+    const data = Buffer.concat([discriminator, instructionData]);`;
             } else if (
                 discriminatorArg &&
                 discriminatorArg.defaultValue?.kind === 'numberValueNode' &&
@@ -356,45 +346,11 @@ function getInstructionBuilderFragment(
                     discriminatorValue,
                     discriminatorArg.type,
                 );
-                dataFragment = addFragmentImports(
-                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
-        if (typeof value === 'bigint') return new BN(value.toString());
-        if (Array.isArray(value)) return value.map(mapBigIntToBn);
-        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-            return Object.fromEntries(
-                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
-            );
-        }
-        return value;
-    };
-    const borshArgs = mapBigIntToBn(args);
-    const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
-    const instructionData = buffer.subarray(0, ${schemaName}.getSpan(buffer));
+                dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
     ${discriminatorFragment}
-    const data = Buffer.concat([discriminator, instructionData]);`,
-                    'bn.js',
-                    'BN',
-                );
+    const data = Buffer.concat([discriminator, instructionData]);`;
             } else {
-                dataFragment = addFragmentImports(
-                    fragment`const mapBigIntToBn = (value: unknown): unknown => {
-        if (typeof value === 'bigint') return new BN(value.toString());
-        if (Array.isArray(value)) return value.map(mapBigIntToBn);
-        if (value && typeof value === 'object' && Object.getPrototypeOf(value) === Object.prototype) {
-            return Object.fromEntries(
-                Object.entries(value as Record<string, unknown>).map(([key, nested]) => [key, mapBigIntToBn(nested)])
-            );
-        }
-        return value;
-    };
-    const borshArgs = mapBigIntToBn(args);
-    const buffer = Buffer.alloc(1000);
-    ${schemaName}.encode(borshArgs as Record<string, unknown>, buffer);
-    const data = buffer.subarray(0, ${schemaName}.getSpan(buffer));`,
-                    'bn.js',
-                    'BN',
-                );
+                dataFragment = fragment`const data = Buffer.from(${codecName}.encode(args));`;
             }
         } else {
             // No user args, just discriminator

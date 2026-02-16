@@ -81,7 +81,7 @@ function getAccountInterfaceFragment(node: AccountNode): Fragment {
 
 function getAccountSchemaFragment(node: AccountNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
     const name = pascalCase(node.name);
-    const schemaName = `${name}AccountDataSchema`;
+    const schemaName = `${name}AccountDataCodec`;
 
     console.log(`         → Visiting node.data to generate schema...`);
     const schema = visit(node.data, borshSchemaVisitor);
@@ -101,7 +101,7 @@ function getDeserializeAccountFragment(node: AccountNode): Fragment {
     const name = pascalCase(node.name);
     const functionName = `deserialize${name}Account`;
     const dataTypeName = `${name}AccountData`;
-    const schemaName = `${name}AccountDataSchema`;
+    const schemaName = `${name}AccountDataCodec`;
 
     // Check if account has discriminator fields
     const discriminatorNames = (node.discriminators || [])

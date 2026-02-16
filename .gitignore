@@ -3,6 +3,7 @@
 # tests
 test/e2e/system/
 test/e2e/token/
+test/e2e/**/docs/
 .txt
 
 # builds

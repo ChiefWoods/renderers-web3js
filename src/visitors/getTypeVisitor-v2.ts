@@ -88,7 +88,11 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
 
                 visitDefinedTypeLink(node) {
                     const typeName = pascalCase(node.name);
-                    return addFragmentImports(fragment`${typeName}`, 'generatedTypes', typeName);
+                    return addFragmentImports(
+                        fragment`${typeName}`,
+                        `generatedTypes/${camelCase(node.name)}`,
+                        typeName,
+                    );
                 },
 
                 visitEnumEmptyVariantType(node) {

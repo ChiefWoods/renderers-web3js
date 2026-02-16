@@ -38,5 +38,5 @@ function getTypeSchemaFragment(node: DefinedTypeNode, borshSchemaVisitor: BorshS
     }
 
     const schema = visit(node.type, borshSchemaVisitor);
-    return fragment`export const ${node.name}Schema = ${schema};`;
+    return fragment`export const ${node.name}Codec = ${schema};`;
 }

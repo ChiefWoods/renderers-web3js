@@ -28,15 +28,13 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain('data: TokenAccountData');
 
     // Check Borsh schema
-    expect(result.content).toContain('const TokenAccountDataSchema');
-    expect(result.content).toContain('struct([');
-    expect(result.content).toContain('u64("amount")');
-    expect(result.content).toContain('publicKey("owner")');
-    expect(result.content).toContain('publicKey("delegate")');
+    expect(result.content).toContain('const TokenAccountDataCodec');
+    expect(result.content).toContain('getStructCodec([');
+    expect(result.content).toContain("['amount', getU64Codec()]");
 
     // Check deserialize function
     expect(result.content).toContain('export function deserializeTokenAccount(data: Buffer): TokenAccountData');
-    expect(result.content).toContain('return TokenAccountDataSchema.decode(data)');
+    expect(result.content).toContain('return TokenAccountDataCodec.decode(data)');
 
     // Check fetch function
     expect(result.content).toContain('export async function fetchTokenAccount');
@@ -50,7 +48,8 @@ test('it generates account with struct data', () => {
 
     // Check imports
     expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
-    expect(result.content).toContain("import { publicKey, struct, u64 } from '@coral-xyz/borsh'");
+    expect(result.content).toContain("import {");
+    expect(result.content).toContain("from '@solana/codecs'");
 });
 
 test('it generates account with simple data', () => {
@@ -68,7 +67,7 @@ test('it generates account with simple data', () => {
     expect(result.content).toContain('supply: bigint');
     expect(result.content).toContain('decimals: number');
     expect(result.content).toContain('export interface MintAccount');
-    expect(result.content).toContain('const MintAccountDataSchema');
+    expect(result.content).toContain('const MintAccountDataCodec');
     expect(result.content).toContain('export function deserializeMintAccount');
     expect(result.content).toContain('export async function fetchMintAccount');
 });
@@ -94,5 +93,5 @@ test('it handles empty struct', () => {
 
     expect(result.content).toContain('export interface EmptyAccountData');
     expect(result.content).toContain('{}');
-    expect(result.content).toContain('const EmptyAccountDataSchema = struct([])');
+    expect(result.content).toContain('const EmptyAccountDataCodec = getStructCodec([])');
 });
