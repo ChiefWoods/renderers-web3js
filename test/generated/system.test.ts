@@ -28,6 +28,15 @@ test('creates transferSol instruction', () => {
     expect(ix.keys).toHaveLength(2);
 });
 
+test('defaults transferSol instruction programId to SYSTEM_PROGRAM_ID', () => {
+    const source = new PublicKey('11111111111111111111111111111111');
+    const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
+
+    const ix = createTransferSolInstruction({ source, destination }, { amount: 5_000n });
+
+    expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
+});
+
 test('sends transfer transaction on-chain', async () => {
     const wallet = loadWallet();
     const connection = getConnection();

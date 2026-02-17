@@ -17,6 +17,7 @@ import {
     getDefinedTypeFragment,
     getInstructionFunctionFragment,
     getPdaFunctionFragment,
+    getProgramIdConstantName,
     getProgramConstantsFragment,
     getTypesIndexFragment,
 } from '../fragments';
@@ -30,6 +31,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
     const extension = options.extension ?? 'ts';
     const indexFilename = options.indexFilename ?? 'index';
+    let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ stack, typeIndent: options.typeIndent });
     const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
     const resolvedInstructionInputVisitor = getResolvedInstructionInputsVisitor();
@@ -72,6 +74,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             typeVisitor,
                             borshSchemaVisitor,
                             visit(node, resolvedInstructionInputVisitor),
+                            currentProgramIdConstant,
                         ),
                     );
                     console.log(`   ✓ Generated`);
@@ -83,7 +86,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                     console.log(`   → File: pdas/${camelCase(node.name)}.${extension}`);
                     const result = createRenderMap(
                         `pdas/${camelCase(node.name)}.${extension}`,
-                        getPdaFunctionFragment(node, typeVisitor),
+                        getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant),
                     );
                     console.log(`   ✓ Generated`);
                     return result;
@@ -91,34 +94,38 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
                 visitProgram(node, { self }) {
                     console.log(`\n🚀 [RenderMap] Processing program: ${node.name}`);
+                    currentProgramIdConstant = getProgramIdConstantName(node.name);
+                    try {
+                        const extractedPdas = extractPdasFromInstructions(node.instructions);
+                        const allPdas = [...node.pdas, ...extractedPdas];
+                        console.log(`   Accounts: ${node.accounts.length}`);
+                        console.log(`   Types: ${node.definedTypes.length}`);
+                        console.log(`   Instructions: ${node.instructions.length}`);
+                        console.log(`   PDAs: ${node.pdas.length}`);
 
-                    const extractedPdas = extractPdasFromInstructions(node.instructions);
-                    const allPdas = [...node.pdas, ...extractedPdas];
-                    console.log(`   Accounts: ${node.accounts.length}`);
-                    console.log(`   Types: ${node.definedTypes.length}`);
-                    console.log(`   Instructions: ${node.instructions.length}`);
-                    console.log(`   PDAs: ${node.pdas.length}`);
+                        const renderMaps = [
+                            createRenderMap(`${indexFilename}.${extension}`, getProgramConstantsFragment(node)),
+                            ...node.accounts.map(n => visit(n, self)),
+                            ...node.definedTypes.map(n => visit(n, self)),
+                            ...node.instructions.map(n => visit(n, self)),
+                            ...node.pdas.map(n => visit(n, self)),
+                            ...allPdas.map(n => visit(n, self)),
+                        ];
 
-                    const renderMaps = [
-                        createRenderMap(`${indexFilename}.${extension}`, getProgramConstantsFragment(node)),
-                        ...node.accounts.map(n => visit(n, self)),
-                        ...node.definedTypes.map(n => visit(n, self)),
-                        ...node.instructions.map(n => visit(n, self)),
-                        ...node.pdas.map(n => visit(n, self)),
-                        ...allPdas.map(n => visit(n, self)),
-                    ];
+                        // Only create types index file if there are defined types
+                        if (node.definedTypes.length > 0) {
+                            console.log(`\n📑 [RenderMap] Generating types index file`);
+                            renderMaps.push(
+                                createRenderMap(`types/${indexFilename}.${extension}`, getTypesIndexFragment(node)),
+                            );
+                        }
 
-                    // Only create types index file if there are defined types
-                    if (node.definedTypes.length > 0) {
-                        console.log(`\n📑 [RenderMap] Generating types index file`);
-                        renderMaps.push(
-                            createRenderMap(`types/${indexFilename}.${extension}`, getTypesIndexFragment(node)),
-                        );
+                        const merged = mergeRenderMaps(renderMaps);
+                        console.log(`\n✅ [RenderMap] Total files generated: ${Object.keys(merged).length}`);
+                        return merged;
+                    } finally {
+                        currentProgramIdConstant = undefined;
                     }
-
-                    const merged = mergeRenderMaps(renderMaps);
-                    console.log(`\n✅ [RenderMap] Total files generated: ${Object.keys(merged).length}`);
-                    return merged;
                 },
 
                 visitRoot(node, { self }) {

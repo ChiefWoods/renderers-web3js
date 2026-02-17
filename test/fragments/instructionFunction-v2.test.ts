@@ -21,7 +21,13 @@ test('it generates instruction with accounts and args', () => {
         arguments: [instructionArgumentNode({ name: 'amount', type: numberTypeNode('u64') })],
     });
 
-    const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
 
     expect(result.content).toContain('export interface TransferInstructionAccounts');
     expect(result.content).toContain('from: PublicKey');
@@ -33,7 +39,8 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('export function createTransferInstruction');
     expect(result.content).toContain('accounts: TransferInstructionAccounts');
     expect(result.content).toContain('args: TransferInstructionArgs');
-    expect(result.content).toContain('programId: PublicKey');
+    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
     expect(result.content).toContain('TransactionInstruction');
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to
@@ -54,13 +61,21 @@ test('it generates instruction with no arguments', () => {
         arguments: [],
     });
 
-    const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
 
     expect(result.content).toContain('export interface InitializeInstructionAccounts');
     expect(result.content).not.toContain('InstructionArgs');
     expect(result.content).not.toContain('InstructionDataSchema');
     expect(result.content).toContain('export function createInitializeInstruction');
-    expect(result.content).toContain('accounts: InitializeInstructionAccounts, programId: PublicKey');
+    expect(result.content).toContain(
+        'accounts: InitializeInstructionAccounts, programId: PublicKey = DUMMYPRG_PROGRAM_ID',
+    );
     expect(result.content).toContain('Buffer.alloc(0)'); // Empty buffer for no args
 });
 
@@ -71,13 +86,19 @@ test('it generates instruction with no accounts', () => {
         arguments: [instructionArgumentNode({ name: 'message', type: numberTypeNode('u32') })],
     });
 
-    const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
 
     expect(result.content).not.toContain('InstructionAccounts');
     expect(result.content).toContain('export interface LogInstructionArgs');
     expect(result.content).toContain('const LogInstructionDataCodec');
     expect(result.content).toContain('export function createLogInstruction');
-    expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey');
+    expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
     expect(result.content).toContain('Buffer.from(LogInstructionDataCodec.encode(args))');
 });

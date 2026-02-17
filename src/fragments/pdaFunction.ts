@@ -4,7 +4,7 @@ import { visit } from '@codama/visitors-core';
 import { addFragmentImports, encodeStringValue, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
 import { TypeVisitor } from '../visitors';
 
-export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor): Fragment {
+export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor, programIdConstant?: string): Fragment {
     const fragments: Fragment[] = [];
 
     // Check if there are variable seeds (need an interface)
@@ -17,7 +17,7 @@ export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor):
     }
 
     // 2. Generate PDA derivation function
-    fragments.push(getPdaDerivationFunctionFragment(node, hasVariableSeeds));
+    fragments.push(getPdaDerivationFunctionFragment(node, hasVariableSeeds, programIdConstant));
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments);
@@ -40,7 +40,11 @@ function getSeedsInterfaceFragment(node: PdaNode, typeVisitor: TypeVisitor): Fra
     return fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`;
 }
 
-function getPdaDerivationFunctionFragment(node: PdaNode, hasVariableSeeds: boolean): Fragment {
+function getPdaDerivationFunctionFragment(
+    node: PdaNode,
+    hasVariableSeeds: boolean,
+    programIdConstant?: string,
+): Fragment {
     const name = pascalCase(node.name);
     const functionName = `find${name}Pda`;
     const seedsType = `${name}PdaSeeds`;
@@ -50,7 +54,11 @@ function getPdaDerivationFunctionFragment(node: PdaNode, hasVariableSeeds: boole
     if (hasVariableSeeds) {
         params.push(`seeds: ${seedsType}`);
     }
-    params.push('programId: PublicKey');
+    if (programIdConstant) {
+        params.push(`programId: PublicKey = ${programIdConstant}`);
+    } else {
+        params.push('programId: PublicKey');
+    }
 
     const paramsStr = params.join(', ');
 
@@ -61,11 +69,17 @@ function getPdaDerivationFunctionFragment(node: PdaNode, hasVariableSeeds: boole
     const functionBody = fragment`${seedsArrayFragment}
     return PublicKey.findProgramAddressSync(seedsBuffer, programId);`;
 
-    return addFragmentImports(
+    let functionFragment = addFragmentImports(
         fragment`export function ${functionName}(${paramsStr}): [PublicKey, number] {\n    ${functionBody}\n}`,
         'web3',
         'PublicKey',
     );
+
+    if (programIdConstant) {
+        functionFragment = addFragmentImports(functionFragment, '..', programIdConstant);
+    }
+
+    return functionFragment;
 }
 
 function getSeedsArrayFragment(node: PdaNode): Fragment {

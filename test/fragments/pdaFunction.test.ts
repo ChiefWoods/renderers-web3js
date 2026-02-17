@@ -23,7 +23,7 @@ test('it generates PDA function with variable seeds', () => {
         ],
     });
 
-    const result = getPdaFunctionFragment(node, getTypeVisitor());
+    const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
     // Check Seeds interface
     expect(result.content).toContain('export interface AssociatedTokenPdaSeeds');
@@ -33,7 +33,7 @@ test('it generates PDA function with variable seeds', () => {
     // Check PDA function
     expect(result.content).toContain('export function findAssociatedTokenPda');
     expect(result.content).toContain('seeds: AssociatedTokenPdaSeeds');
-    expect(result.content).toContain('programId: PublicKey');
+    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('[PublicKey, number]');
 
     // Check seeds array
@@ -47,6 +47,7 @@ test('it generates PDA function with variable seeds', () => {
 
     // Check imports
     expect(result.content).toContain("import { PublicKey } from '@solana/web3.js'");
+    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
 });
 
 test('it generates PDA function with no variable seeds', () => {
@@ -55,14 +56,14 @@ test('it generates PDA function with no variable seeds', () => {
         seeds: [constantPdaSeedNodeFromString('utf8', 'config')],
     });
 
-    const result = getPdaFunctionFragment(node, getTypeVisitor());
+    const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
     // Should not have seeds interface
     expect(result.content).not.toContain('PdaSeeds');
 
     // Check PDA function with only programId parameter
     expect(result.content).toContain('export function findConfigPda');
-    expect(result.content).toContain('programId: PublicKey');
+    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('[PublicKey, number]');
 
     // Check constant seed
@@ -75,7 +76,7 @@ test('it generates PDA function with string seeds', () => {
         seeds: [constantPdaSeedNodeFromString('utf8', 'metadata'), variablePdaSeedNode('name', stringTypeNode('utf8'))],
     });
 
-    const result = getPdaFunctionFragment(node, getTypeVisitor());
+    const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).toContain('export interface MetadataPdaSeeds');
     expect(result.content).toContain('name: string');
@@ -88,7 +89,7 @@ test('it handles empty seeds', () => {
         seeds: [],
     });
 
-    const result = getPdaFunctionFragment(node, getTypeVisitor());
+    const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).toContain('export function findGlobalPda');
     expect(result.content).toContain('const seedsBuffer: Buffer[] = []');
@@ -100,11 +101,11 @@ test('it generates proper function signature', () => {
         seeds: [variablePdaSeedNode('authority', publicKeyTypeNode())],
     });
 
-    const result = getPdaFunctionFragment(node, getTypeVisitor());
+    const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
     // Check complete function signature
     expect(result.content).toMatch(
-        /export function findUserAccountPda\(seeds: UserAccountPdaSeeds, programId: PublicKey\): \[PublicKey, number\]/,
+        /export function findUserAccountPda\(seeds: UserAccountPdaSeeds, programId: PublicKey = DUMMYPRG_PROGRAM_ID\): \[PublicKey, number\]/,
     );
 });
 

@@ -43,6 +43,27 @@ test('creates anchor create instruction', () => {
     expect(ix.keys[1]?.pubkey.equals(storageAccount)).toBe(true);
 });
 
+test('defaults anchor create instruction and PDA to DUMMYPRG_PROGRAM_ID', () => {
+    const authority = Keypair.generate().publicKey;
+    const uuid = `codama-anchor-${Date.now()}`;
+
+    const [storageAccount] = findStorageAccountPda({ authority, uuid });
+    const ix = createCreateInstruction(
+        {
+            authority,
+            systemProgram: SystemProgram.programId,
+        },
+        {
+            text: 'hello anchor',
+            uuid,
+            action: { __kind: 'SetVaultStatus', fields: [1] },
+        },
+    );
+
+    expect(ix.programId.equals(DUMMYPRG_PROGRAM_ID)).toBe(true);
+    expect(ix.keys[1]?.pubkey.equals(storageAccount)).toBe(true);
+});
+
 test('sends anchor create transaction on-chain and fetches storage', async () => {
     const wallet = loadWallet();
     const connection = getConnection();

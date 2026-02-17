@@ -27,6 +27,13 @@ test('creates addMemo instruction', () => {
     expect(Buffer.from(ix.data).toString('utf8')).toBe(memo);
 });
 
+test('defaults addMemo instruction programId to MEMO_PROGRAM_ID', () => {
+    const memo = 'Hello from Codama!';
+    const ix = createAddMemoInstruction({ memo });
+
+    expect(ix.programId.equals(MEMO_PROGRAM_ID)).toBe(true);
+});
+
 test('sends memo transaction on-chain', async () => {
     const wallet = loadWallet();
     const connection = getConnection();

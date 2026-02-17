@@ -89,6 +89,7 @@ export function getInstructionFunctionFragment(
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
     resolvedInputs: ResolvedInstructionInput[] = [],
+    programIdConstant?: string,
 ): Fragment {
     console.log(`\n   🏗️  [Fragment:Instruction] Building instruction for: ${node.name}`);
     console.log(`      Accounts: ${node.accounts.length}, Args: ${node.arguments.length}`);
@@ -113,7 +114,7 @@ export function getInstructionFunctionFragment(
     }
 
     // 4. Generate the instruction builder function
-    fragments.push(getInstructionBuilderFragment(node, hasAccounts, hasArgs, resolvedInputs));
+    fragments.push(getInstructionBuilderFragment(node, hasAccounts, hasArgs, resolvedInputs, programIdConstant));
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments);
@@ -260,6 +261,7 @@ function getInstructionBuilderFragment(
     hasAccounts: boolean,
     hasArgs: boolean,
     resolvedInputs: ResolvedInstructionInput[],
+    programIdConstant?: string,
 ): Fragment {
     const name = pascalCase(node.name);
     const functionName = `create${name}Instruction`;
@@ -279,7 +281,11 @@ function getInstructionBuilderFragment(
     if (hasUserArgs) {
         params.push(`args: ${argsType}`);
     }
-    params.push(`programId: PublicKey`);
+    if (programIdConstant) {
+        params.push(`programId: PublicKey = ${programIdConstant}`);
+    } else {
+        params.push(`programId: PublicKey`);
+    }
 
     const paramsStr = params.join(', ');
 
@@ -401,6 +407,9 @@ function getInstructionBuilderFragment(
 
     // Add all necessary imports
     let finalResult = addFragmentImports(result, 'web3', ['PublicKey', 'TransactionInstruction']);
+    if (programIdConstant) {
+        finalResult = addFragmentImports(finalResult, '..', programIdConstant);
+    }
     if (hasAccounts) {
         finalResult = addFragmentImports(finalResult, 'web3', 'AccountMeta');
     }

@@ -15,8 +15,12 @@ export function getProgramConstantsFragment(node: ProgramNode): Fragment {
     return getCodeFileFragment(fragments);
 }
 
+export function getProgramIdConstantName(programName: string): string {
+    return `${programName.toUpperCase()}_PROGRAM_ID`;
+}
+
 function getProgramIdFragment(node: ProgramNode): Fragment {
-    const constantName = `${node.name.toUpperCase()}_PROGRAM_ID`;
+    const constantName = getProgramIdConstantName(node.name);
 
     return addFragmentImports(
         fragment`export const ${constantName} = new PublicKey('${node.publicKey}');`,
