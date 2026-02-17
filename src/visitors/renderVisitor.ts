@@ -1,18 +1,23 @@
-import { deleteDirectory, writeRenderMap } from '@codama/renderers-core';
+import { deleteDirectory, mapRenderMapContentAsync, writeRenderMap } from '@codama/renderers-core';
 import { rootNodeVisitor, visit } from '@codama/visitors-core';
 
-import { RenderOptions } from '../utils/options';
+import { getCodeFormatter, RenderOptions } from '../utils';
 import { getRenderMapVisitor } from './getRenderMapVisitor';
 
 export function renderVisitor(path: string, options: RenderOptions = {}) {
-    return rootNodeVisitor(root => {
+    return rootNodeVisitor(async root => {
         // Delete existing generated folder.
         if (options.deleteFolderBeforeRendering ?? true) {
             deleteDirectory(path);
         }
 
         // Render the new files.
-        const renderMap = visit(root, getRenderMapVisitor(options));
+        let renderMap = visit(root, getRenderMapVisitor(options));
+
+        // Format generated source files, unless explicitly disabled.
+        const formatCode = await getCodeFormatter(options);
+        renderMap = await mapRenderMapContentAsync(renderMap, formatCode);
+
         writeRenderMap(renderMap, path);
     });
 }
