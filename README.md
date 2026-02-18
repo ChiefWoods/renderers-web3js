@@ -42,7 +42,6 @@ codama run web3js
 
 ## TODO
 
-- Add remaining accounts as input to instructions
 - Add PDALink node resolution in default params
 - do more testing with either isSigner type
 - add enums data type parsing

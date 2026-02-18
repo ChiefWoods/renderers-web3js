@@ -1,5 +1,6 @@
 import {
     camelCase,
+    getAllInstructionArguments,
     InstructionNode,
     isNode,
     NumberTypeNode,
@@ -103,8 +104,9 @@ export function getInstructionFunctionFragment(
         fragments.push(getAccountsInterfaceFragment(node, resolvedInputs));
     }
 
-    // 2. Generate Args interface (if there are arguments)
-    if (hasArgs) {
+    // 2. Generate Args interface (if there are arguments or remaining accounts)
+    const hasRemainingAccountArgs = !!getRemainingAccountsArgsFragment(node)?.length;
+    if (hasArgs || hasRemainingAccountArgs) {
         fragments.push(getArgsInterfaceFragment(node, typeVisitor));
     }
 
@@ -155,7 +157,8 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
     // Filter out arguments with defaultValueStrategy: 'omitted' (like discriminators)
     const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
 
-    if (userArgs.length === 0) {
+    const remainingArgsFields = getRemainingAccountsArgsFragment(node);
+    if (userArgs.length === 0 && !remainingArgsFields?.length) {
         return fragment``;
     }
 
@@ -165,9 +168,32 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
         return fragment`${fieldName}: ${fieldType}`;
     });
 
-    const fieldsContent = mergeFragments(fields, cs => cs.map(c => `    ${c};`).join('\n'));
+    const allFields = remainingArgsFields ? [...fields, ...remainingArgsFields] : fields;
+    const fieldsContent = mergeFragments(allFields, cs => cs.map(c => `    ${c};`).join('\n'));
 
     return fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`;
+}
+
+function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | undefined {
+    const allArguments = getAllInstructionArguments(node);
+    const fragments = (node.remainingAccounts ?? []).flatMap(remainingAccount => {
+        if (!isNode(remainingAccount.value, 'argumentValueNode')) return [];
+        const argumentExists = allArguments.some(arg => arg.name === remainingAccount.value.name);
+        if (argumentExists) return [];
+
+        const fieldName = camelCase(remainingAccount.value.name);
+        const optional = remainingAccount.isOptional ? '?' : '';
+        const accountType =
+            remainingAccount.isSigner === 'either'
+                ? 'PublicKey | Keypair'
+                : remainingAccount.isSigner
+                  ? 'Keypair'
+                  : 'PublicKey';
+        return [addFragmentImports(fragment`${fieldName}${optional}: Array<${accountType}>`, 'web3', ['PublicKey', 'Keypair'])];
+    });
+
+    if (fragments.length === 0) return;
+    return fragments;
 }
 
 function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
@@ -256,6 +282,51 @@ function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedIns
     );
 }
 
+function getRemainingKeysArrayFragment(node: InstructionNode): Fragment {
+    const argumentNames = new Set(getAllInstructionArguments(node).map(arg => arg.name));
+    const fragments = (node.remainingAccounts ?? []).flatMap(remainingAccount => {
+        if (!isNode(remainingAccount.value, 'argumentValueNode')) return [];
+
+        const argumentName = camelCase(remainingAccount.value.name);
+        const optionalArg = remainingAccount.isOptional ? ' ?? []' : '';
+        const isWritable = remainingAccount.isWritable ?? false;
+        const argumentExists = argumentNames.has(remainingAccount.value.name);
+
+        if (argumentExists) return [];
+
+        if (remainingAccount.isSigner === 'either') {
+            return [
+                fragment`keys.push(...(args.${argumentName}${optionalArg}).map((accountOrSigner) => ({
+        pubkey: 'publicKey' in accountOrSigner ? accountOrSigner.publicKey : accountOrSigner,
+        isSigner: 'publicKey' in accountOrSigner,
+        isWritable: ${isWritable},
+    })));`,
+            ];
+        }
+
+        if (remainingAccount.isSigner) {
+            return [
+                fragment`keys.push(...(args.${argumentName}${optionalArg}).map((signer) => ({
+        pubkey: signer.publicKey,
+        isSigner: true,
+        isWritable: ${isWritable},
+    })));`,
+            ];
+        }
+
+        return [
+            fragment`keys.push(...(args.${argumentName}${optionalArg}).map((account) => ({
+        pubkey: account,
+        isSigner: ${remainingAccount.isSigner ? 'true' : 'false'},
+        isWritable: ${isWritable},
+    })));`,
+        ];
+    });
+
+    if (fragments.length === 0) return fragment``;
+    return mergeFragments(fragments, cs => cs.join('\n    '));
+}
+
 function getInstructionBuilderFragment(
     node: InstructionNode,
     hasAccounts: boolean,
@@ -272,13 +343,19 @@ function getInstructionBuilderFragment(
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);
     const hasUserArgs = userArgs.length > 0;
+    const hasRemainingAccountArgs = (node.remainingAccounts ?? []).some(
+        remainingAccount =>
+            isNode(remainingAccount.value, 'argumentValueNode') &&
+            !getAllInstructionArguments(node).some(arg => arg.name === remainingAccount.value.name),
+    );
+    const hasInputArgs = hasUserArgs || hasRemainingAccountArgs;
 
     // Build function parameters
     const params: string[] = [];
     if (hasAccounts) {
         params.push(`accounts: ${accountsType}`);
     }
-    if (hasUserArgs) {
+    if (hasInputArgs) {
         params.push(`args: ${argsType}`);
     }
     if (programIdConstant) {
@@ -301,6 +378,7 @@ function getInstructionBuilderFragment(
 
     // Build the keys array
     const keysArrayFragment = getKeysArrayFragment(node, resolvedInputs);
+    const remainingKeysArrayFragment = getRemainingKeysArrayFragment(node);
 
     // Generate data serialization
     let dataFragment: Fragment;
@@ -392,6 +470,9 @@ function getInstructionBuilderFragment(
         bodyParts.push(mergeFragments(defaultFragments, cs => cs.join('\n    ')));
     }
     bodyParts.push(keysArrayFragment);
+    if (remainingKeysArrayFragment.content) {
+        bodyParts.push(remainingKeysArrayFragment);
+    }
     bodyParts.push(dataFragment);
     bodyParts.push(fragment``);
     bodyParts.push(returnFragment);

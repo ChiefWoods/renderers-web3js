@@ -1,9 +1,10 @@
 import {
+    argumentValueNode,
     instructionArgumentNode,
-    instructionNode,
     instructionAccountNode,
+    instructionNode,
+    instructionRemainingAccountsNode,
     numberTypeNode,
-    publicKeyTypeNode,
 } from '@codama/nodes';
 import { expect, test } from 'vitest';
 
@@ -118,4 +119,91 @@ test('it handles optional accounts', () => {
     expect(result.content).toContain('source: PublicKey');
     expect(result.content).toContain('delegate?: PublicKey'); // Optional in interface
     expect(result.content).toContain('...(accounts.delegate ? ['); // Spread operator pattern
+});
+
+test('it generates remaining account inputs when remaining accounts are argument-based', () => {
+    const node = instructionNode({
+        name: 'addMemo',
+        accounts: [],
+        arguments: [instructionArgumentNode({ name: 'memo', type: numberTypeNode('u32') })],
+        remainingAccounts: [
+            instructionRemainingAccountsNode(argumentValueNode('signers'), {
+                isOptional: true,
+                isSigner: true,
+                isWritable: false,
+            }),
+        ],
+    });
+
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
+
+    expect(result.content).toContain('signers?: Array<Keypair>;');
+    expect(result.content).toContain('args: AddMemoInstructionArgs, programId: PublicKey = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('keys.push(...(args.signers ?? []).map((signer) => ({');
+    expect(result.content).toContain('pubkey: signer.publicKey');
+    expect(result.content).toContain('isSigner: true');
+});
+
+test('it generates correct semicolons for multiple remaining account fields', () => {
+    const node = instructionNode({
+        name: 'multiRemaining',
+        accounts: [],
+        arguments: [],
+        remainingAccounts: [
+            instructionRemainingAccountsNode(argumentValueNode('signers'), {
+                isOptional: true,
+                isSigner: true,
+                isWritable: false,
+            }),
+            instructionRemainingAccountsNode(argumentValueNode('accounts'), {
+                isOptional: false,
+                isSigner: false,
+                isWritable: true,
+            }),
+        ],
+    });
+
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
+
+    // Each field must have its own semicolon (not just one at the end)
+    expect(result.content).toContain('signers?: Array<Keypair>;');
+    expect(result.content).toContain('accounts: Array<PublicKey>;');
+});
+
+test('it skips remaining accounts when name matches existing instruction argument', () => {
+    const node = instructionNode({
+        name: 'duplicateArg',
+        accounts: [],
+        arguments: [instructionArgumentNode({ name: 'signers', type: numberTypeNode('u32') })],
+        remainingAccounts: [
+            instructionRemainingAccountsNode(argumentValueNode('signers'), {
+                isOptional: true,
+                isSigner: true,
+                isWritable: false,
+            }),
+        ],
+    });
+
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
+
+    // Should NOT generate keys.push for signers from remaining accounts (would duplicate)
+    expect(result.content).not.toContain('keys.push(...(args.signers');
 });
