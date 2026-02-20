@@ -47,6 +47,18 @@ test('it generates discriminated union helper functions for data enums', () => {
     expect(result.content).toContain(`export function isEvent<K extends Event['__kind']>`);
 });
 
+test('it generates codec for tuple defined types', () => {
+    const node = definedTypeNode({
+        name: 'myTuple',
+        type: tupleTypeNode([numberTypeNode('u32'), stringTypeNode('utf8')]),
+    });
+
+    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+
+    expect(result.content).toContain('export type MyTuple = ');
+    expect(result.content).toContain('export const myTupleCodec = getTupleCodec(');
+});
+
 test('it does not generate discriminated union helper functions for non-enums', () => {
     const node = definedTypeNode({
         name: 'myStruct',

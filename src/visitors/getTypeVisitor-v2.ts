@@ -196,12 +196,10 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitNumberType(node) {
-                    // u8, u16, u32, i8, i16, i32 → number
-                    if (['u8', 'u16', 'u32', 'i8', 'i16', 'i32'].includes(node.format)) {
-                        return fragment`number`;
+                    if (['u64', 'u128', 'i64', 'i128'].includes(node.format)) {
+                        return fragment`bigint`;
                     }
-                    // u64, u128, i64, i128 → bigint
-                    return fragment`bigint`;
+                    return fragment`number`;
                 },
 
                 visitOptionType(node, { self }) {
