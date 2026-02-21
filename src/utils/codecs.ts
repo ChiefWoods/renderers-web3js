@@ -34,9 +34,9 @@ export function extractPdasFromInstructions(instructions: InstructionNode[]): Pd
         for (const account of instruction.accounts) {
             if (account.defaultValue?.kind === 'pdaValueNode') {
                 const pda = account.defaultValue.pda;
-
-                if (!pdaMap.has(pda.name)) {
-                    pdaMap.set(pda.name, pda);
+                // PdaLinkNode references PDAs from other programs; only PdaNode has seeds
+                if ('seeds' in pda && !pdaMap.has(pda.name)) {
+                    pdaMap.set(pda.name, pda as PdaNode);
                 }
             }
         }
