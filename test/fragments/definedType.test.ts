@@ -1,9 +1,11 @@
 import {
+    arrayTypeNode,
     definedTypeNode,
     enumEmptyVariantTypeNode,
     enumStructVariantTypeNode,
     enumTupleVariantTypeNode,
     enumTypeNode,
+    fixedCountNode,
     numberTypeNode,
     stringTypeNode,
     structFieldTypeNode,
@@ -58,4 +60,16 @@ test('it does not generate discriminated union helper functions for non-enums', 
     expect(result.content).not.toContain('// Data Enum Helpers.');
     expect(result.content).not.toContain('export function myStruct');
     expect(result.content).not.toContain('export function isMyStruct');
+});
+
+test('it generates codec for tuple-based defined types', () => {
+    const node = definedTypeNode({
+        name: 'number',
+        type: tupleTypeNode([arrayTypeNode(numberTypeNode('u64'), fixedCountNode(4))]),
+    });
+
+    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+
+    expect(result.content).toContain('numberCodec');
+    expect(result.content).toContain('getTupleCodec');
 });

@@ -47,9 +47,9 @@ test('it renders boolean types', () => {
     expect(result.content).toBe('boolean');
 });
 
-test('it renders bytes as Buffer', () => {
+test('it renders bytes as Uint8Array', () => {
     const result = visit(bytesTypeNode(), getTypeVisitor());
-    expect(result.content).toBe('Buffer');
+    expect(result.content).toBe('Uint8Array');
 });
 
 test('it renders string types', () => {

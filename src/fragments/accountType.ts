@@ -12,24 +12,22 @@ export function getAccountTypeFragment(
     const fragments: Fragment[] = [];
 
     // 1. Generate AccountData interface
-    console.log(`      1️⃣  Generating AccountData interface...`);
     fragments.push(getAccountDataInterfaceFragment(node, typeVisitor));
 
     // 2. Generate Account interface (address + data)
-    console.log(`      2️⃣  Generating Account interface...`);
     fragments.push(getAccountInterfaceFragment(node));
 
     // 3. Generate Borsh schema for deserialization
-    console.log(`      3️⃣  Generating Borsh schema...`);
     fragments.push(getAccountSchemaFragment(node, borshSchemaVisitor));
 
     // 4. Generate deserialize function
-    console.log(`      4️⃣  Generating deserialize function...`);
     fragments.push(getDeserializeAccountFragment(node));
 
     // 5. Generate fetch function
-    console.log(`      5️⃣  Generating fetch function...`);
     fragments.push(getFetchAccountFragment(node));
+
+    // 6. Generate fetchAll functions
+    fragments.push(getFetchAllAccountsFragment(node));
 
     return getCodeFileFragment(fragments);
 }
@@ -83,18 +81,13 @@ function getAccountSchemaFragment(node: AccountNode, borshSchemaVisitor: BorshSc
     const name = pascalCase(node.name);
     const schemaName = `${name}AccountDataCodec`;
 
-    console.log(`         → Visiting node.data to generate schema...`);
     const schema = visit(node.data, borshSchemaVisitor);
-    console.log(`         → Schema generated: ${schema.content.substring(0, 100)}...`);
 
     // Manually merge to ensure imports are preserved
     const constFragment = fragment`const ${schemaName} = `;
     const semicolonFragment = fragment`;`;
 
-    const result = mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
-    console.log(`         → Final schema: const ${schemaName} = ${schema.content.substring(0, 60)}...;`);
-
-    return result;
+    return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
 }
 
 function getDeserializeAccountFragment(node: AccountNode): Fragment {
@@ -113,7 +106,7 @@ function getDeserializeAccountFragment(node: AccountNode): Fragment {
     if (hasDiscriminator) {
         // Deserialize all fields, then filter out discriminators
         const destructureFields = discriminatorNames.map(name => `${name}: _`).join(', ');
-        return fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
+        return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
     const deserialized = ${schemaName}.decode(data);
     const { ${destructureFields}, ...accountData } = deserialized;
     return accountData as ${dataTypeName};
@@ -121,7 +114,7 @@ function getDeserializeAccountFragment(node: AccountNode): Fragment {
     }
 
     // No discriminator - deserialize entire buffer
-    return fragment`export function ${functionName}(data: Buffer): ${dataTypeName} {
+    return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
     return ${schemaName}.decode(data);
 }`;
 }
@@ -145,6 +138,48 @@ function getFetchAccountFragment(node: AccountNode): Fragment {
         address,
         data: ${deserializeFunctionName}(accountInfo.data),
     };
+}`,
+        'web3',
+        ['Connection', 'PublicKey'],
+    );
+}
+
+function getFetchAllAccountsFragment(node: AccountNode): Fragment {
+    const name = pascalCase(node.name);
+    const fetchAllFunctionName = `fetchAll${name}Accounts`;
+    const fetchAllMaybeFunctionName = `fetchAllMaybe${name}Accounts`;
+    const accountTypeName = `${name}Account`;
+    const deserializeFunctionName = `deserialize${name}Account`;
+
+    return addFragmentImports(
+        fragment`export async function ${fetchAllMaybeFunctionName}(
+    connection: Connection,
+    addresses: PublicKey[]
+): Promise<(${accountTypeName} | null)[]> {
+    const accountInfos = await connection.getMultipleAccountsInfo(addresses);
+    return accountInfos.map((accountInfo, index) => {
+        if (!accountInfo) {
+            return null;
+        }
+        return {
+            address: addresses[index],
+            data: ${deserializeFunctionName}(accountInfo.data),
+        };
+    });
+}
+
+export async function ${fetchAllFunctionName}(
+    connection: Connection,
+    addresses: PublicKey[]
+): Promise<${accountTypeName}[]> {
+    const maybeAccounts = await ${fetchAllMaybeFunctionName}(connection, addresses);
+    const missingAddresses = maybeAccounts
+        .flatMap((account, i) => (!account ? [addresses[i].toBase58()] : []))
+        .join(', ');
+    if (missingAddresses) {
+        throw new Error('${name} account(s) not found at address(es): ' + missingAddresses);
+    }
+    return maybeAccounts.filter((a): a is ${accountTypeName} => a !== null);
 }`,
         'web3',
         ['Connection', 'PublicKey'],

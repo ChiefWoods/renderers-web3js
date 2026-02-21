@@ -67,7 +67,7 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitBytesType() {
-                    return fragment`Buffer`;
+                    return fragment`Uint8Array`;
                 },
 
                 visitDateTimeType(node, { self }) {

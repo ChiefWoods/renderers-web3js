@@ -33,7 +33,7 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain("['amount', getU64Codec()]");
 
     // Check deserialize function
-    expect(result.content).toContain('export function deserializeTokenAccount(data: Buffer): TokenAccountData');
+    expect(result.content).toContain('export function deserializeTokenAccount(data: Uint8Array): TokenAccountData');
     expect(result.content).toContain('return TokenAccountDataCodec.decode(data)');
 
     // Check fetch function
@@ -45,6 +45,13 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain('if (!accountInfo)');
     expect(result.content).toContain('throw new Error');
     expect(result.content).toContain('deserializeTokenAccount(accountInfo.data)');
+
+    // Check fetchAll functions
+    expect(result.content).toContain('export async function fetchAllMaybeTokenAccounts');
+    expect(result.content).toContain('export async function fetchAllTokenAccounts');
+    expect(result.content).toContain('connection.getMultipleAccountsInfo(addresses)');
+    expect(result.content).toContain('Promise<(TokenAccount | null)[]>');
+    expect(result.content).toContain('Promise<TokenAccount[]>');
 
     // Check imports
     expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
