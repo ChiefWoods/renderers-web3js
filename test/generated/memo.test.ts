@@ -43,7 +43,6 @@ test('sends memo transaction on-chain', async () => {
     const tx = new Transaction().add(ix);
 
     const sig = await sendAndConfirmTransaction(connection, tx, [wallet]);
-    console.log('MEMO', sig);
     expect(typeof sig).toBe('string');
     expect(sig.length).toBeGreaterThan(0);
 });

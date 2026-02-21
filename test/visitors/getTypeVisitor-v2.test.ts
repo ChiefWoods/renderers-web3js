@@ -59,7 +59,6 @@ test('it renders string types', () => {
 
 test('it renders PublicKey with import', () => {
     const result = visit(publicKeyTypeNode(), getTypeVisitor());
-    console.log('RESULT', result);
     expect(result.content).toBe('PublicKey');
     expect(result.imports.get('web3')).toContain('PublicKey');
 });

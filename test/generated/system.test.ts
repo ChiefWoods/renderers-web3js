@@ -49,7 +49,6 @@ test('sends transfer transaction on-chain', async () => {
 
     const tx = new Transaction().add(ix);
     const sig = await sendAndConfirmTransaction(connection, tx, [wallet]);
-    console.log('TRANSFER', sig);
     expect(typeof sig).toBe('string');
     expect(sig.length).toBeGreaterThan(0);
 });

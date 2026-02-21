@@ -36,7 +36,6 @@ export function extractPdasFromInstructions(instructions: InstructionNode[]) {
                 const pda = account.defaultValue.pda;
 
                 if (!pdaMap.has(pda.name)) {
-                    console.log(`      → Found PDA: ${pda.name} in instruction ${instruction.name}`);
                     pdaMap.set(pda.name, pda);
                 }
             }

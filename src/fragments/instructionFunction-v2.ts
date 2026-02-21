@@ -92,8 +92,6 @@ export function getInstructionFunctionFragment(
     resolvedInputs: ResolvedInstructionInput[] = [],
     programIdConstant?: string,
 ): Fragment {
-    console.log(`\n   🏗️  [Fragment:Instruction] Building instruction for: ${node.name}`);
-    console.log(`      Accounts: ${node.accounts.length}, Args: ${node.arguments.length}`);
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
 

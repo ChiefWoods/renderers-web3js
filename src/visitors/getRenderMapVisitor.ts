@@ -43,31 +43,21 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         v =>
             extendVisitor(v, {
                 visitAccount(node) {
-                    console.log(`\n📦 [RenderMap] Generating account: ${node.name}`);
-                    console.log(`   → File: accounts/${camelCase(node.name)}.${extension}`);
-                    const result = createRenderMap(
+                    return createRenderMap(
                         `accounts/${camelCase(node.name)}.${extension}`,
                         getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
-                    console.log(`   ✓ Generated ${Object.keys(result).length} file(s)`);
-                    return result;
                 },
 
                 visitDefinedType(node) {
-                    console.log(`\n📘 [RenderMap] Generating defined type: ${node.name}`);
-                    console.log(`   → File: types/${camelCase(node.name)}.${extension}`);
-                    const result = createRenderMap(
+                    return createRenderMap(
                         `types/${camelCase(node.name)}.${extension}`,
                         getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
-                    console.log(`   ✓ Generated`);
-                    return result;
                 },
 
                 visitInstruction(node) {
-                    console.log(`\n⚡ [RenderMap] Generating instruction: ${node.name}`);
-                    console.log(`   → File: instructions/${camelCase(node.name)}.${extension}`);
-                    const result = createRenderMap(
+                    return createRenderMap(
                         `instructions/${camelCase(node.name)}.${extension}`,
                         getInstructionFunctionFragment(
                             node,
@@ -77,31 +67,20 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             currentProgramIdConstant,
                         ),
                     );
-                    console.log(`   ✓ Generated`);
-                    return result;
                 },
 
                 visitPda(node) {
-                    console.log(`\n🔑 [RenderMap] Generating PDA: ${node.name}`);
-                    console.log(`   → File: pdas/${camelCase(node.name)}.${extension}`);
-                    const result = createRenderMap(
+                    return createRenderMap(
                         `pdas/${camelCase(node.name)}.${extension}`,
                         getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant),
                     );
-                    console.log(`   ✓ Generated`);
-                    return result;
                 },
 
                 visitProgram(node, { self }) {
-                    console.log(`\n🚀 [RenderMap] Processing program: ${node.name}`);
                     currentProgramIdConstant = getProgramIdConstantName(node.name);
                     try {
                         const extractedPdas = extractPdasFromInstructions(node.instructions);
                         const allPdas = [...node.pdas, ...extractedPdas];
-                        console.log(`   Accounts: ${node.accounts.length}`);
-                        console.log(`   Types: ${node.definedTypes.length}`);
-                        console.log(`   Instructions: ${node.instructions.length}`);
-                        console.log(`   PDAs: ${node.pdas.length}`);
 
                         const renderMaps = [
                             createRenderMap(`${indexFilename}.${extension}`, getProgramConstantsFragment(node)),
@@ -114,15 +93,12 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
                         // Only create types index file if there are defined types
                         if (node.definedTypes.length > 0) {
-                            console.log(`\n📑 [RenderMap] Generating types index file`);
                             renderMaps.push(
                                 createRenderMap(`types/${indexFilename}.${extension}`, getTypesIndexFragment(node)),
                             );
                         }
 
-                        const merged = mergeRenderMaps(renderMaps);
-                        console.log(`\n✅ [RenderMap] Total files generated: ${Object.keys(merged).length}`);
-                        return merged;
+                        return mergeRenderMaps(renderMaps);
                     } finally {
                         currentProgramIdConstant = undefined;
                     }
