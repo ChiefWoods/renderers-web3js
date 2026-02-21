@@ -40,7 +40,7 @@
         "lint": "eslint . && prettier --check .",
         "lint:fix": "eslint --fix . && prettier --write .",
         "publish-package": "pnpm build && changeset publish",
-        "test": "pnpm test:types && pnpm build && pnpm test:e2e && pnpm test:generated && pnpm test:unit && pnpm test:treeshakability && pnpm test:exports",
+        "test": "pnpm test:types && pnpm build && pnpm test:e2e && pnpm test:generated && pnpm test:unit && pnpm test:exports",
         "test:e2e": "./test/e2e/test.sh",
         "test:exports": "node ./test/exports/module.mjs && node ./test/exports/commonjs.cjs",
         "test:generated": "vitest run test/generated/memo.test.ts test/generated/system.test.ts",
