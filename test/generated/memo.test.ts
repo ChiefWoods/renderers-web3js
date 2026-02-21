@@ -7,8 +7,10 @@ import { expect, test } from 'vitest';
 
 import { createAddMemoInstruction, MEMO_PROGRAM_ID } from '../e2e/memo/docs/index';
 
+const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
+const hasWallet = process.env.CI !== 'true' && fs.existsSync(keypairPath);
+
 function loadWallet(): Keypair {
-    const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
     const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
     return Keypair.fromSecretKey(Uint8Array.from(secret));
 }
@@ -34,7 +36,7 @@ test('defaults addMemo instruction programId to MEMO_PROGRAM_ID', () => {
     expect(ix.programId.equals(MEMO_PROGRAM_ID)).toBe(true);
 });
 
-test('sends memo transaction on-chain', async () => {
+test.skipIf(!hasWallet)('sends memo transaction on-chain', async () => {
     const wallet = loadWallet();
     const connection = getConnection();
 

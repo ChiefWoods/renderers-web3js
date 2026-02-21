@@ -7,8 +7,10 @@ import { expect, test } from 'vitest';
 
 import { createTransferSolInstruction, SYSTEM_PROGRAM_ID } from '../e2e/system_program/docs/index';
 
+const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
+const hasWallet = process.env.CI !== 'true' && fs.existsSync(keypairPath);
+
 function loadWallet(): Keypair {
-    const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
     const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
     return Keypair.fromSecretKey(Uint8Array.from(secret));
 }
@@ -37,7 +39,7 @@ test('defaults transferSol instruction programId to SYSTEM_PROGRAM_ID', () => {
     expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
 });
 
-test('sends transfer transaction on-chain', async () => {
+test.skipIf(!hasWallet)('sends transfer transaction on-chain', async () => {
     const wallet = loadWallet();
     const connection = getConnection();
 

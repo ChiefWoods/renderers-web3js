@@ -36,7 +36,7 @@ export function extractPdasFromInstructions(instructions: InstructionNode[]): Pd
                 const pda = account.defaultValue.pda;
                 // PdaLinkNode references PDAs from other programs; only PdaNode has seeds
                 if ('seeds' in pda && !pdaMap.has(pda.name)) {
-                    pdaMap.set(pda.name, pda as PdaNode);
+                    pdaMap.set(pda.name, pda);
                 }
             }
         }
