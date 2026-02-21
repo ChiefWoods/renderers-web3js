@@ -1,5 +1,6 @@
 import { expect, test } from 'vitest';
-import { createImportMap, getImportStatements, mergeImportMaps } from '../../src/utils/importMap';
+
+import { createImportMap, getImportStatements } from '../../src/utils/importMap';
 
 test('it creates import maps', () => {
     const map = createImportMap([

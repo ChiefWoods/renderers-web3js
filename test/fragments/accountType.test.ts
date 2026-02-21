@@ -6,12 +6,12 @@ import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
 
 test('it generates account with struct data', () => {
     const node = accountNode({
-        name: 'token',
         data: structTypeNode([
             structFieldTypeNode({ name: 'amount', type: numberTypeNode('u64') }),
             structFieldTypeNode({ name: 'owner', type: publicKeyTypeNode() }),
             structFieldTypeNode({ name: 'delegate', type: publicKeyTypeNode() }),
         ]),
+        name: 'token',
     });
 
     const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
@@ -55,17 +55,17 @@ test('it generates account with struct data', () => {
 
     // Check imports
     expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
-    expect(result.content).toContain("import {");
+    expect(result.content).toContain('import {');
     expect(result.content).toContain("from '@solana/codecs'");
 });
 
 test('it generates account with simple data', () => {
     const node = accountNode({
-        name: 'mint',
         data: structTypeNode([
             structFieldTypeNode({ name: 'supply', type: numberTypeNode('u64') }),
             structFieldTypeNode({ name: 'decimals', type: numberTypeNode('u8') }),
         ]),
+        name: 'mint',
     });
 
     const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
@@ -81,8 +81,8 @@ test('it generates account with simple data', () => {
 
 test('it generates proper error message in fetch function', () => {
     const node = accountNode({
-        name: 'metadata',
         data: structTypeNode([structFieldTypeNode({ name: 'uri', type: numberTypeNode('u32') })]),
+        name: 'metadata',
     });
 
     const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
@@ -92,8 +92,8 @@ test('it generates proper error message in fetch function', () => {
 
 test('it handles empty struct', () => {
     const node = accountNode({
-        name: 'empty',
         data: structTypeNode([]),
+        name: 'empty',
     });
 
     const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());

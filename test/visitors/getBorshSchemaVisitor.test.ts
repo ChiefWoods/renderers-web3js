@@ -3,7 +3,6 @@ import {
     booleanTypeNode,
     bytesTypeNode,
     definedTypeLinkNode,
-    definedTypeNode,
     enumEmptyVariantTypeNode,
     enumStructVariantTypeNode,
     enumTupleVariantTypeNode,

@@ -1,4 +1,4 @@
-import { BytesEncoding, InstructionNode } from '@codama/nodes';
+import { BytesEncoding, InstructionNode, type PdaNode } from '@codama/nodes';
 import {
     getBase16Decoder,
     getBase16Encoder,
@@ -27,8 +27,8 @@ export function getStringValueAsHexadecimals(encoding: BytesEncoding, data: stri
     return '0x' + getBase16Decoder().decode(encodeStringValue(encoding, data));
 }
 
-export function extractPdasFromInstructions(instructions: InstructionNode[]) {
-    const pdaMap = new Map<string, any>();
+export function extractPdasFromInstructions(instructions: InstructionNode[]): PdaNode[] {
+    const pdaMap = new Map<string, PdaNode>();
 
     for (const instruction of instructions) {
         for (const account of instruction.accounts) {

@@ -50,14 +50,14 @@ export function getImportStatements(importMap: ImportMap, pathOverrides: PathOve
 
 function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): ImportMap {
     const DEFAULT_PATH_OVERRIDES: PathOverrides = {
+        'buffer-layout': '@solana/buffer-layout',
+        codecs: '@solana/codecs',
         generatedAccounts: joinPath('..', 'accounts'),
+        generatedHelpers: joinPath('..', 'helpers'),
         generatedInstructions: joinPath('..', 'instructions'),
         generatedPdas: joinPath('..', 'pdas'),
         generatedTypes: joinPath('..', 'types'),
-        generatedHelpers: joinPath('..', 'helpers'),
         web3: '@solana/web3.js',
-        codecs: '@solana/codecs',
-        'buffer-layout': '@solana/buffer-layout',
     };
 
     pathOverrides = { ...DEFAULT_PATH_OVERRIDES, ...pathOverrides };

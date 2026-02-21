@@ -117,6 +117,6 @@ test('it encodes constant byte seeds from their declared encoding', () => {
 
     const result = getPdaFunctionFragment(node, getTypeVisitor());
 
-    expect(result.content).toContain("Buffer.from(\"storage\", 'utf8')");
+    expect(result.content).toContain('Buffer.from("storage", \'utf8\')');
     expect(result.content).not.toContain("Buffer.from('5NmF1bZtRi', 'hex')");
 });

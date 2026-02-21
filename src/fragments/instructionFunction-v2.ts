@@ -187,7 +187,12 @@ function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | u
                 : remainingAccount.isSigner
                   ? 'Keypair'
                   : 'PublicKey';
-        return [addFragmentImports(fragment`${fieldName}${optional}: Array<${accountType}>`, 'web3', ['PublicKey', 'Keypair'])];
+        return [
+            addFragmentImports(fragment`${fieldName}${optional}: Array<${accountType}>`, 'web3', [
+                'PublicKey',
+                'Keypair',
+            ]),
+        ];
     });
 
     if (fragments.length === 0) return;
@@ -389,7 +394,7 @@ function getInstructionBuilderFragment(
             // vs Borsh encoding (structs, size-prefixed strings, etc.)
             const requiresRawEncoding = userArgs.some(arg => {
                 // Check if this is a raw string (not wrapped in sizePrefixTypeNode)
-                let type = arg.type;
+                const type = arg.type;
                 if (type.kind === 'stringTypeNode') {
                     return true; // Raw string without wrapper
                 }
@@ -597,13 +602,15 @@ function getInputDefaultFragment(input: ResolvedInstructionInput, node: Instruct
             }
             return fragment``;
 
-        case 'accountValueNode':
+        case 'accountValueNode': {
             const accountRef = camelCase(defaultValue.name);
             return defaultFragment(`accounts.${accountRef}`);
+        }
 
-        case 'argumentValueNode':
+        case 'argumentValueNode': {
             const argRef = camelCase(defaultValue.name);
             return defaultFragment(`args.${argRef}`);
+        }
 
         // Add other cases as needed
         default:

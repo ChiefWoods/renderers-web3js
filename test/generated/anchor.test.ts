@@ -31,9 +31,9 @@ test('creates anchor create instruction', () => {
             systemProgram: SystemProgram.programId,
         },
         {
+            action: { __kind: 'SetVaultStatus', fields: [1] },
             text: 'hello anchor',
             uuid,
-            action: { __kind: 'SetVaultStatus', fields: [1] },
         },
         DUMMYPRG_PROGRAM_ID,
     );
@@ -54,9 +54,9 @@ test('defaults anchor create instruction and PDA to DUMMYPRG_PROGRAM_ID', () => 
             systemProgram: SystemProgram.programId,
         },
         {
+            action: { __kind: 'SetVaultStatus', fields: [1] },
             text: 'hello anchor',
             uuid,
-            action: { __kind: 'SetVaultStatus', fields: [1] },
         },
     );
 
@@ -77,9 +77,9 @@ test('sends anchor create transaction on-chain and fetches storage', async () =>
             systemProgram: SystemProgram.programId,
         },
         {
+            action: { __kind: 'SetVaultStatus', fields: [1] },
             text,
             uuid,
-            action: { __kind: 'SetVaultStatus', fields: [1] },
         },
         DUMMYPRG_PROGRAM_ID,
     );

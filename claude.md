@@ -8,10 +8,10 @@ This is a **Codama renderer** project that generates TypeScript client code for 
 
 1. **Reads Solana IDLs** - Takes JSON IDL files describing on-chain programs
 2. **Generates TypeScript Code** - Creates client-side code with:
-   - Instruction builder functions (e.g., `createCreateInstruction`)
-   - Account data interfaces and fetch functions
-   - Borsh serialization schemas
-   - Type definitions
+    - Instruction builder functions (e.g., `createCreateInstruction`)
+    - Account data interfaces and fetch functions
+    - Borsh serialization schemas
+    - Type definitions
 
 3. **Supports Multiple Targets** - Builds for Node, Browser, and React Native
 
@@ -52,12 +52,13 @@ The **Fragment** is the core building block for code generation:
 
 ```typescript
 type Fragment = {
-    content: string;      // The generated code
-    imports: ImportMap;   // Tracked imports
-}
+    content: string; // The generated code
+    imports: ImportMap; // Tracked imports
+};
 ```
 
 **Key Functions:**
+
 - `fragment` - Template literal tag for creating fragments
 - `mergeFragments` - Combines multiple fragments
 - `addFragmentImports` - Adds imports to a fragment
@@ -97,14 +98,14 @@ Generated instructions had a **double discriminator bug**:
 ```typescript
 // WRONG - Before fix:
 const Schema = struct([
-    array(u8(), 8, "discriminator"),  // ❌ Discriminator in schema
-    str("text"),
-    str("uuid")
+    array(u8(), 8, 'discriminator'), // ❌ Discriminator in schema
+    str('text'),
+    str('uuid'),
 ]);
 
 // Then later:
 const discriminator = Buffer.from('181ec828051c0777', 'hex');
-const data = Buffer.concat([discriminator, instructionData]);  // ❌ Prepended again
+const data = Buffer.concat([discriminator, instructionData]); // ❌ Prepended again
 ```
 
 **Result**: Schema expected 3 fields but args only had 2 → encoding failure.
@@ -133,10 +134,10 @@ Now the generated code is correct:
 
 ```typescript
 // After fix:
-const Schema = struct([str("text"), str("uuid")]);  // ✅ No discriminator
+const Schema = struct([str('text'), str('uuid')]); // ✅ No discriminator
 
 const discriminator = Buffer.from('181ec828051c0777', 'hex');
-const data = Buffer.concat([discriminator, instructionData]);  // ✅ Only prepended once
+const data = Buffer.concat([discriminator, instructionData]); // ✅ Only prepended once
 ```
 
 ## Key Learnings
@@ -144,11 +145,13 @@ const data = Buffer.concat([discriminator, instructionData]);  // ✅ Only prepe
 ### 1. Omitted Arguments
 
 Codama uses `defaultValueStrategy: 'omitted'` for values that should NOT appear in user-facing interfaces:
+
 - Discriminators (instruction identifiers)
 - Version numbers
 - Magic bytes
 
 **Rule**: Always filter these out when generating:
+
 - Argument interfaces
 - Borsh schemas
 - Function parameters
@@ -186,19 +189,19 @@ const data = buffer.subarray(0, schema.getSpan(buffer));
 **Three levels of tests:**
 
 1. **Unit Tests** (`test/fragments/`, `test/visitors/`)
-   - Test individual fragments and visitors
-   - Fast feedback loop
-   - Run with: `pnpm run test:unit`
+    - Test individual fragments and visitors
+    - Fast feedback loop
+    - Run with: `pnpm run test:unit`
 
 2. **Code Generation Tests** (`test/e2e/`)
-   - Generate code from real IDLs
-   - Verify output structure
-   - Run with: `cd test/e2e/system && pnpm test`
+    - Generate code from real IDLs
+    - Verify output structure
+    - Run with: `cd test/e2e/system && pnpm test`
 
 3. **Integration Tests** (`test/generated/system.test.ts`)
-   - Test generated code against real Solana devnet
-   - End-to-end validation
-   - Requires wallet and RPC access
+    - Test generated code against real Solana devnet
+    - End-to-end validation
+    - Requires wallet and RPC access
 
 ## Working with the Codebase
 
@@ -221,7 +224,7 @@ const data = buffer.subarray(0, schema.getSpan(buffer));
 const result = addFragmentImports(
     fragment`publicKey()`,
     'borsh',
-    'publicKey'  // or ['publicKey', 'str'] for multiple
+    'publicKey', // or ['publicKey', 'str'] for multiple
 );
 ```
 
@@ -243,9 +246,10 @@ const fieldSchema = visit(arg.type, borshSchemaVisitor);
 ### Debugging Tips
 
 1. **Console logs are your friend** - The codebase has extensive logging:
-   ```typescript
-   console.log(`🔧 [Field] ${fieldName} - type: ${field.type.kind}`);
-   ```
+
+    ```typescript
+    console.log(`🔧 [Field] ${fieldName} - type: ${field.type.kind}`);
+    ```
 
 2. **Check generated files** in `test/e2e/system/docs/` to see actual output
 
@@ -262,6 +266,7 @@ After calling `getCodeFileFragment()`, the imports map is empty because imports 
 ### 2. Node Arguments vs User Arguments
 
 Always distinguish between:
+
 - `node.arguments` - All arguments including omitted ones
 - `userArgs` - Filtered list excluding omitted arguments
 
@@ -275,11 +280,11 @@ When generating Borsh schemas, field names must be passed as the last parameter:
 
 ```typescript
 // CORRECT:
-u64("amount")
-option(publicKey(), "owner")
+u64('amount');
+option(publicKey(), 'owner');
 
 // WRONG:
-u64()  // Missing field name
+u64(); // Missing field name
 ```
 
 ### 5. TypeScript vs Borsh Types
@@ -294,6 +299,7 @@ Don't mix them up!
 **Build Command**: `pnpm build`
 
 Outputs:
+
 - `dist/index.node.mjs` - Node ESM
 - `dist/index.node.cjs` - Node CommonJS
 - `dist/index.browser.mjs` - Browser ESM

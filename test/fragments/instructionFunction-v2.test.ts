@@ -1,7 +1,7 @@
 import {
     argumentValueNode,
-    instructionArgumentNode,
     instructionAccountNode,
+    instructionArgumentNode,
     instructionNode,
     instructionRemainingAccountsNode,
     numberTypeNode,
@@ -13,13 +13,13 @@ import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
 
 test('it generates instruction with accounts and args', () => {
     const node = instructionNode({
-        name: 'transfer',
         accounts: [
-            instructionAccountNode({ name: 'from', isSigner: false, isWritable: true }),
-            instructionAccountNode({ name: 'to', isSigner: false, isWritable: true }),
-            instructionAccountNode({ name: 'authority', isSigner: true, isWritable: false }),
+            instructionAccountNode({ isSigner: false, isWritable: true, name: 'from' }),
+            instructionAccountNode({ isSigner: false, isWritable: true, name: 'to' }),
+            instructionAccountNode({ isSigner: true, isWritable: false, name: 'authority' }),
         ],
         arguments: [instructionArgumentNode({ name: 'amount', type: numberTypeNode('u64') })],
+        name: 'transfer',
     });
 
     const result = getInstructionFunctionFragment(
@@ -49,17 +49,17 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
 
     // Check imports in content (getCodeFileFragment bakes imports into content)
-    expect(result.content).toContain("import {");
-    expect(result.content).toContain("PublicKey");
-    expect(result.content).toContain("TransactionInstruction");
-    expect(result.content).toContain("AccountMeta");
+    expect(result.content).toContain('import {');
+    expect(result.content).toContain('PublicKey');
+    expect(result.content).toContain('TransactionInstruction');
+    expect(result.content).toContain('AccountMeta');
 });
 
 test('it generates instruction with no arguments', () => {
     const node = instructionNode({
-        name: 'initialize',
-        accounts: [instructionAccountNode({ name: 'account', isSigner: false, isWritable: true })],
+        accounts: [instructionAccountNode({ isSigner: false, isWritable: true, name: 'account' })],
         arguments: [],
+        name: 'initialize',
     });
 
     const result = getInstructionFunctionFragment(
@@ -82,9 +82,9 @@ test('it generates instruction with no arguments', () => {
 
 test('it generates instruction with no accounts', () => {
     const node = instructionNode({
-        name: 'log',
         accounts: [],
         arguments: [instructionArgumentNode({ name: 'message', type: numberTypeNode('u32') })],
+        name: 'log',
     });
 
     const result = getInstructionFunctionFragment(
@@ -106,12 +106,12 @@ test('it generates instruction with no accounts', () => {
 
 test('it handles optional accounts', () => {
     const node = instructionNode({
-        name: 'approve',
         accounts: [
-            instructionAccountNode({ name: 'source', isSigner: false, isWritable: false }),
-            instructionAccountNode({ name: 'delegate', isSigner: false, isWritable: false, isOptional: true }),
+            instructionAccountNode({ isSigner: false, isWritable: false, name: 'source' }),
+            instructionAccountNode({ isOptional: true, isSigner: false, isWritable: false, name: 'delegate' }),
         ],
         arguments: [],
+        name: 'approve',
     });
 
     const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
@@ -123,9 +123,9 @@ test('it handles optional accounts', () => {
 
 test('it generates remaining account inputs when remaining accounts are argument-based', () => {
     const node = instructionNode({
-        name: 'addMemo',
         accounts: [],
         arguments: [instructionArgumentNode({ name: 'memo', type: numberTypeNode('u32') })],
+        name: 'addMemo',
         remainingAccounts: [
             instructionRemainingAccountsNode(argumentValueNode('signers'), {
                 isOptional: true,
@@ -152,9 +152,9 @@ test('it generates remaining account inputs when remaining accounts are argument
 
 test('it generates correct semicolons for multiple remaining account fields', () => {
     const node = instructionNode({
-        name: 'multiRemaining',
         accounts: [],
         arguments: [],
+        name: 'multiRemaining',
         remainingAccounts: [
             instructionRemainingAccountsNode(argumentValueNode('signers'), {
                 isOptional: true,
@@ -184,9 +184,9 @@ test('it generates correct semicolons for multiple remaining account fields', ()
 
 test('it skips remaining accounts when name matches existing instruction argument', () => {
     const node = instructionNode({
-        name: 'duplicateArg',
         accounts: [],
         arguments: [instructionArgumentNode({ name: 'signers', type: numberTypeNode('u32') })],
+        name: 'duplicateArg',
         remainingAccounts: [
             instructionRemainingAccountsNode(argumentValueNode('signers'), {
                 isOptional: true,

@@ -1,4 +1,4 @@
-import { ProgramNode, camelCase } from '@codama/nodes';
+import { camelCase, ProgramNode } from '@codama/nodes';
 
 import { Fragment, fragment } from '../utils';
 

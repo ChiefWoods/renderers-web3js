@@ -16,7 +16,11 @@ export function getDefinedTypeFragment(
     fragments.push(typeDefinition);
 
     // 2. Generate Borsh schema if it's a struct, enum, or tuple
-    if (node.type.kind === 'structTypeNode' || node.type.kind === 'enumTypeNode' || node.type.kind === 'tupleTypeNode') {
+    if (
+        node.type.kind === 'structTypeNode' ||
+        node.type.kind === 'enumTypeNode' ||
+        node.type.kind === 'tupleTypeNode'
+    ) {
         const schemaFragment = getTypeSchemaFragment(node, borshSchemaVisitor);
         if (schemaFragment) {
             fragments.push(schemaFragment);

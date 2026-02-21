@@ -22,7 +22,7 @@ test('creates transferSol instruction', () => {
     const source = new PublicKey('11111111111111111111111111111111');
     const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
 
-    const ix = createTransferSolInstruction({ source, destination }, { amount: 5_000n }, SYSTEM_PROGRAM_ID);
+    const ix = createTransferSolInstruction({ destination, source }, { amount: 5_000n }, SYSTEM_PROGRAM_ID);
 
     expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
     expect(ix.keys).toHaveLength(2);
@@ -32,7 +32,7 @@ test('defaults transferSol instruction programId to SYSTEM_PROGRAM_ID', () => {
     const source = new PublicKey('11111111111111111111111111111111');
     const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
 
-    const ix = createTransferSolInstruction({ source, destination }, { amount: 5_000n });
+    const ix = createTransferSolInstruction({ destination, source }, { amount: 5_000n });
 
     expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
 });
@@ -42,7 +42,7 @@ test('sends transfer transaction on-chain', async () => {
     const connection = getConnection();
 
     const ix = createTransferSolInstruction(
-        { source: wallet.publicKey, destination: wallet.publicKey },
+        { destination: wallet.publicKey, source: wallet.publicKey },
         { amount: 5_000n },
         SYSTEM_PROGRAM_ID,
     );

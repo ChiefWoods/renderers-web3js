@@ -10,14 +10,10 @@ function isDefaultU32LePrefix(prefix: unknown): boolean {
     return resolved.kind === 'numberTypeNode' && resolved.format === 'u32' && resolved.endian === 'le';
 }
 
-function getNumberCodec(format: string, endian: 'le' | 'be') {
+function getNumberCodec(format: string, endian: 'be' | 'le') {
     const fn = `get${format[0].toUpperCase()}${format.slice(1)}Codec`;
     if (endian === 'be') {
-        return addFragmentImports(
-            fragment`${fn}({ endian: Endian.Big })`,
-            'codecs',
-            [fn, 'Endian'],
-        );
+        return addFragmentImports(fragment`${fn}({ endian: Endian.Big })`, 'codecs', [fn, 'Endian']);
     }
     return addFragmentImports(fragment`${fn}()`, 'codecs', fn);
 }
@@ -91,20 +87,6 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                     );
                 },
 
-                visitEnumType(node, { self }) {
-                    if (isScalarEnum(node)) {
-                        return addFragmentImports(fragment`getU8Codec()`, 'codecs', 'getU8Codec');
-                    }
-
-                    const variants = node.variants.map(variant => visit(variant, self));
-                    const variantsFragment = mergeFragments(variants, cs => cs.join(', '));
-                    return addFragmentImports(
-                        fragment`getDiscriminatedUnionCodec([${variantsFragment}])`,
-                        'codecs',
-                        'getDiscriminatedUnionCodec',
-                    );
-                },
-
                 visitEnumEmptyVariantType(node) {
                     return addFragmentImports(
                         fragment`['${camelCase(node.name).replace(/^./, c => c.toUpperCase())}', getUnitCodec()]`,
@@ -137,6 +119,20 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
                         fragment`['${variantName}', getStructCodec([['fields', ${tupleSchema}]])]`,
                         'codecs',
                         'getStructCodec',
+                    );
+                },
+
+                visitEnumType(node, { self }) {
+                    if (isScalarEnum(node)) {
+                        return addFragmentImports(fragment`getU8Codec()`, 'codecs', 'getU8Codec');
+                    }
+
+                    const variants = node.variants.map(variant => visit(variant, self));
+                    const variantsFragment = mergeFragments(variants, cs => cs.join(', '));
+                    return addFragmentImports(
+                        fragment`getDiscriminatedUnionCodec([${variantsFragment}])`,
+                        'codecs',
+                        'getDiscriminatedUnionCodec',
                     );
                 },
 

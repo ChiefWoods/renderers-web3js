@@ -1,7 +1,14 @@
-import { camelCase, PdaNode, pascalCase } from '@codama/nodes';
+import { camelCase, pascalCase, PdaNode, type TypeNode } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, encodeStringValue, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
+import {
+    addFragmentImports,
+    encodeStringValue,
+    Fragment,
+    fragment,
+    getCodeFileFragment,
+    mergeFragments,
+} from '../utils';
 import { TypeVisitor } from '../visitors';
 
 export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor, programIdConstant?: string): Fragment {
@@ -122,7 +129,7 @@ function getSeedsArrayFragment(node: PdaNode): Fragment {
     return fragment`const seedsBuffer: Buffer[] = [\n${entriesContent}\n    ];`;
 }
 
-function getSeedEncodingFragment(seedName: string, seedType: any): Fragment {
+function getSeedEncodingFragment(seedName: string, seedType: TypeNode): Fragment {
     // Handle different seed types and their encoding
     if (seedType.kind === 'publicKeyTypeNode') {
         return fragment`seeds.${seedName}.toBuffer()`;
