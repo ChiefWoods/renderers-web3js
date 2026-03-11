@@ -57,6 +57,9 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
     expect(result.content).toContain('import {');
     expect(result.content).toContain("from '@solana/codecs'");
+
+    // No GPA when no size or discriminator
+    expect(result.content).not.toContain('fetchProgramAccounts');
 });
 
 test('it generates account with simple data', () => {
@@ -101,4 +104,33 @@ test('it handles empty struct', () => {
     expect(result.content).toContain('export interface EmptyAccountData');
     expect(result.content).toContain('{}');
     expect(result.content).toContain('const EmptyAccountDataCodec = getStructCodec([])');
+});
+
+test('it generates fetchProgramAccounts when account has size', () => {
+    const node = accountNode({
+        data: structTypeNode([
+            structFieldTypeNode({ name: 'version', type: numberTypeNode('u8') }),
+            structFieldTypeNode({ name: 'authority', type: publicKeyTypeNode() }),
+        ]),
+        name: 'nonce',
+        size: 80,
+    });
+
+    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+
+    expect(result.content).toContain('export async function fetchProgramAccountsNonce');
+    expect(result.content).toContain('connection.getProgramAccounts(programId');
+    expect(result.content).toContain('{ dataSize: 80 }');
+    expect(result.content).toContain('Promise<NonceAccount[]>');
+});
+
+test('it does not generate fetchProgramAccounts when no size or discriminator', () => {
+    const node = accountNode({
+        data: structTypeNode([structFieldTypeNode({ name: 'data', type: numberTypeNode('u64') })]),
+        name: 'unfilterable',
+    });
+
+    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+
+    expect(result.content).not.toContain('fetchProgramAccounts');
 });

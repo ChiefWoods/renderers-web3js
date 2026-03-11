@@ -2,6 +2,7 @@ import { AccountNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
 import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
+import { getGpaFiltersFromAccountNode } from '../utils/gpaFilters';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
 export function getAccountTypeFragment(
@@ -28,6 +29,12 @@ export function getAccountTypeFragment(
 
     // 6. Generate fetchAll functions
     fragments.push(getFetchAllAccountsFragment(node));
+
+    // 7. Generate fetchProgramAccounts (GPA) when filters available
+    const gpaFragment = getFetchProgramAccountsFragment(node);
+    if (gpaFragment) {
+        fragments.push(gpaFragment);
+    }
 
     return getCodeFileFragment(fragments);
 }
@@ -180,6 +187,44 @@ export async function ${fetchAllFunctionName}(
         throw new Error('${name} account(s) not found at address(es): ' + missingAddresses);
     }
     return maybeAccounts.filter((a): a is ${accountTypeName} => a !== null);
+}`,
+        'web3',
+        ['Connection', 'PublicKey'],
+    );
+}
+
+function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefined {
+    const filters = getGpaFiltersFromAccountNode(node);
+    if (!filters) return undefined;
+
+    const name = pascalCase(node.name);
+    const functionName = `fetchProgramAccounts${name}`;
+    const accountTypeName = `${name}Account`;
+    const deserializeFunctionName = `deserialize${name}Account`;
+
+    const filterEntries: string[] = [];
+    if (filters.memcmp) {
+        filterEntries.push(`{ memcmp: { offset: ${filters.memcmp.offset}, bytes: '${filters.memcmp.bytes}' } }`);
+    }
+    if (filters.dataSize != null) {
+        filterEntries.push(`{ dataSize: ${filters.dataSize} }`);
+    }
+    const filtersLiteral = `[${filterEntries.join(', ')}]`;
+
+    return addFragmentImports(
+        fragment`export async function ${functionName}(
+    connection: Connection,
+    programId: PublicKey,
+    options?: { commitment?: 'processed' | 'confirmed' | 'finalized' }
+): Promise<${accountTypeName}[]> {
+    const accounts = await connection.getProgramAccounts(programId, {
+        commitment: options?.commitment,
+        filters: ${filtersLiteral},
+    });
+    return accounts.map(({ pubkey, account }) => ({
+        address: pubkey,
+        data: ${deserializeFunctionName}(account.data),
+    }));
 }`,
         'web3',
         ['Connection', 'PublicKey'],

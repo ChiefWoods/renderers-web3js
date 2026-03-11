@@ -2,11 +2,17 @@ import { BytesEncoding, InstructionNode, type PdaNode } from '@codama/nodes';
 import {
     getBase16Decoder,
     getBase16Encoder,
+    getBase58Decoder,
     getBase58Encoder,
     getBase64Encoder,
     getUtf8Encoder,
     ReadonlyUint8Array,
 } from '@solana/codecs';
+
+/** Encodes bytes to base58 string for getProgramAccounts memcmp filter. */
+export function encodeBytesToBase58(bytes: ReadonlyUint8Array | Uint8Array): string {
+    return getBase58Decoder().decode(new Uint8Array(bytes));
+}
 
 export function encodeStringValue(encoding: BytesEncoding, data: string): ReadonlyUint8Array {
     switch (encoding) {
