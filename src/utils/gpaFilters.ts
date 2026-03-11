@@ -1,16 +1,17 @@
+import type { BytesEncoding } from '@codama/nodes';
 import {
     type AccountNode,
     type ConstantDiscriminatorNode,
     type DiscriminatorNode,
     type FieldDiscriminatorNode,
 } from '@codama/nodes';
-import type { BytesEncoding } from '@codama/nodes';
+
 import { encodeStringValue } from './codecs';
 import { encodeBytesToBase58 } from './codecs';
 
 export type GpaFilter = {
-    memcmp?: { offset: number; bytes: string };
     dataSize?: number;
+    memcmp?: { bytes: string; offset: number };
 };
 
 /**
@@ -38,7 +39,7 @@ export function getGpaFiltersFromAccountNode(node: AccountNode): GpaFilter | nul
     return filters;
 }
 
-function getDiscriminatorMemcmpFilter(node: AccountNode): { offset: number; bytes: string } | null {
+function getDiscriminatorMemcmpFilter(node: AccountNode): { bytes: string; offset: number } | null {
     const discriminators = node.discriminators ?? [];
     if (discriminators.length === 0) return null;
 
@@ -48,13 +49,10 @@ function getDiscriminatorMemcmpFilter(node: AccountNode): { offset: number; byte
     if (!bytes) return null;
 
     const offset = 'offset' in discriminator ? discriminator.offset : 0;
-    return { offset, bytes: encodeBytesToBase58(bytes) };
+    return { bytes: encodeBytesToBase58(bytes), offset };
 }
 
-function getDiscriminatorBytes(
-    discriminator: DiscriminatorNode,
-    node: AccountNode,
-): Uint8Array | null {
+function getDiscriminatorBytes(discriminator: DiscriminatorNode, node: AccountNode): Uint8Array | null {
     switch (discriminator.kind) {
         case 'constantDiscriminatorNode':
             return getConstantDiscriminatorBytes(discriminator);
@@ -78,23 +76,21 @@ function getConstantDiscriminatorBytes(discriminator: ConstantDiscriminatorNode)
     // constantValueNode with number value
     if (constant.kind === 'constantValueNode' && constant.value?.kind === 'numberValueNode') {
         const type = constant.type?.kind === 'numberTypeNode' ? constant.type : null;
-        return encodeNumberToBytes(Number(constant.value.number), type ?? { format: 'u32', endian: 'le' });
+        return encodeNumberToBytes(Number(constant.value.number), type ?? { endian: 'le', format: 'u32' });
     }
 
     return null;
 }
 
-function getFieldDiscriminatorBytes(
-    discriminator: FieldDiscriminatorNode,
-    node: AccountNode,
-): Uint8Array | null {
+function getFieldDiscriminatorBytes(discriminator: FieldDiscriminatorNode, node: AccountNode): Uint8Array | null {
     if (node.data.kind !== 'structTypeNode') return null;
 
     const field = node.data.fields.find(f => f.name === discriminator.name);
     if (!field?.defaultValue) return null;
 
     const value = field.defaultValue;
-    const numType = field.type?.kind === 'numberTypeNode' ? field.type : { format: 'u32' as const, endian: 'le' as const };
+    const numType =
+        field.type?.kind === 'numberTypeNode' ? field.type : { endian: 'le' as const, format: 'u32' as const };
     if (value.kind === 'numberValueNode') {
         return encodeNumberToBytes(Number(value.number), numType);
     }
@@ -106,10 +102,7 @@ function getFieldDiscriminatorBytes(
     return null;
 }
 
-function encodeNumberToBytes(
-    num: number,
-    type: { format?: string; endian?: 'be' | 'le' },
-): Uint8Array {
+function encodeNumberToBytes(num: number, type: { endian?: 'be' | 'le'; format?: string }): Uint8Array {
     const format = type?.format ?? 'u32';
     const endian = type?.endian ?? 'le';
     const le = endian === 'le';

@@ -10,7 +10,7 @@ import {
 } from '@solana/codecs';
 
 /** Encodes bytes to base58 string for getProgramAccounts memcmp filter. */
-export function encodeBytesToBase58(bytes: Uint8Array | ReadonlyUint8Array): string {
+export function encodeBytesToBase58(bytes: ReadonlyUint8Array | Uint8Array): string {
     return getBase58Decoder().decode(new Uint8Array(bytes));
 }
 
