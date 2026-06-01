@@ -229,8 +229,8 @@ function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedIns
         return addFragmentImports(fragment`const keys: AccountMeta[] = [];`, 'web3', 'AccountMeta');
     }
 
-    const requiredAccounts: Fragment[] = [];
-    const optionalAccounts: Fragment[] = [];
+    const entries: Fragment[] = [];
+    const optionalAccountStrategy = node.optionalAccountStrategy ?? 'programId';
 
     node.accounts.forEach(account => {
         const accountName = camelCase(account.name);
@@ -240,9 +240,8 @@ function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedIns
         const resolvedInput = resolvedInputs.find(
             input => input.kind === 'instructionAccountNode' && input.name === account.name,
         );
-        const hasDerivedDefault =
-            resolvedInput?.defaultValue?.kind === 'pdaValueNode' ||
-            resolvedInput?.defaultValue?.kind === 'programIdValueNode';
+        const hasPdaDefault = resolvedInput?.defaultValue?.kind === 'pdaValueNode';
+        const hasDerivedDefault = hasPdaDefault || resolvedInput?.defaultValue?.kind === 'programIdValueNode';
 
         // Handle "either" case - check if it's a Keypair at runtime
         let signerCheck: string;
@@ -263,20 +262,20 @@ function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedIns
 
         const entry = fragment`{ pubkey: ${pubkeyAccess}, isSigner: ${signerCheck}, isWritable: ${isWritable} }`;
 
-        // PDA-derived accounts are always included after derivation (they become required)
-        if (hasDerivedDefault) {
-            requiredAccounts.push(entry);
+        if (hasPdaDefault) {
+            entries.push(entry);
+        } else if (account.isOptional && optionalAccountStrategy === 'omitted') {
+            entries.push(fragment`...(accounts.${accountName} ? [${entry}] : [])`);
         } else if (account.isOptional) {
-            // Truly optional accounts use spread operator
-            optionalAccounts.push(fragment`...(accounts.${accountName} ? [${entry}] : [])`);
+            entries.push(
+                fragment`accounts.${accountName} ? ${entry} : { pubkey: programId, isSigner: false, isWritable: false }`,
+            );
         } else {
-            requiredAccounts.push(entry);
+            entries.push(entry);
         }
     });
 
-    // Combine required and optional accounts
-    const allEntries = [...requiredAccounts, ...optionalAccounts];
-    const entriesContent = mergeFragments(allEntries, cs => cs.map(c => `        ${c},`).join('\n'));
+    const entriesContent = mergeFragments(entries, cs => cs.map(c => `        ${c},`).join('\n'));
 
     return addFragmentImports(
         fragment`const keys: AccountMeta[] = [\n${entriesContent}\n    ];`,
