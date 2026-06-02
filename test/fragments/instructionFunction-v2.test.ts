@@ -112,6 +112,7 @@ test('it handles optional accounts', () => {
         ],
         arguments: [],
         name: 'approve',
+        optionalAccountStrategy: 'omitted',
     });
 
     const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
@@ -119,6 +120,37 @@ test('it handles optional accounts', () => {
     expect(result.content).toContain('source: PublicKey');
     expect(result.content).toContain('delegate?: PublicKey'); // Optional in interface
     expect(result.content).toContain('...(accounts.delegate ? ['); // Spread operator pattern
+});
+
+test('it preserves non-trailing optional account order with program id placeholders', () => {
+    const node = instructionNode({
+        accounts: [
+            instructionAccountNode({ isSigner: false, isWritable: false, name: 'source' }),
+            instructionAccountNode({ isOptional: true, isSigner: false, isWritable: true, name: 'delegate' }),
+            instructionAccountNode({ isSigner: true, isWritable: false, name: 'authority' }),
+        ],
+        arguments: [],
+        name: 'approve',
+        optionalAccountStrategy: 'programId',
+    });
+
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+    );
+
+    const sourceIndex = result.content.indexOf('{ pubkey: accounts.source');
+    const delegateIndex = result.content.indexOf('accounts.delegate');
+    const authorityIndex = result.content.indexOf('{ pubkey: accounts.authority');
+
+    expect(sourceIndex).toBeGreaterThanOrEqual(0);
+    expect(delegateIndex).toBeGreaterThan(sourceIndex);
+    expect(delegateIndex).toBeLessThan(authorityIndex);
+    expect(result.content).toContain(': { pubkey: programId, isSigner: false, isWritable: false }');
+    expect(result.content).not.toContain('...(accounts.delegate ? [');
 });
 
 test('it generates remaining account inputs when remaining accounts are argument-based', () => {
