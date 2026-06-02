@@ -1,5 +1,11 @@
 # @pratikbuilds/web3js-legacy
 
+## 0.1.3
+
+### Patch Changes
+
+- [#46](https://github.com/pratikbuilds/renderers-js-web3js/pull/46) [`255b516`](https://github.com/pratikbuilds/renderers-js-web3js/commit/255b516561b8d6bf0c8166291870cda7ced2f0e3) Thanks [@8bitPEN](https://github.com/8bitPEN)! - Preserve optional account order and emit program id placeholders for optional accounts when required by the instruction strategy.
+
 ## 0.1.0
 
 ### Minor Changes
