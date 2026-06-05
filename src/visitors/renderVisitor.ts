@@ -6,9 +6,13 @@ import { getRenderMapVisitor } from './getRenderMapVisitor';
 
 export function renderVisitor(path: string, options: RenderOptions = {}) {
     return rootNodeVisitor(async root => {
+        const outputPath = options.packageFolder
+            ? `${path.replace(/\/$/, '')}/${options.packageFolder.replace(/^\//, '')}`
+            : path;
+
         // Delete existing generated folder.
         if (options.deleteFolderBeforeRendering ?? true) {
-            deleteDirectory(path);
+            deleteDirectory(outputPath);
         }
 
         // Render the new files.
@@ -18,6 +22,6 @@ export function renderVisitor(path: string, options: RenderOptions = {}) {
         const formatCode = await getCodeFormatter(options);
         renderMap = await mapRenderMapContentAsync(renderMap, formatCode);
 
-        writeRenderMap(renderMap, path);
+        writeRenderMap(renderMap, outputPath);
     });
 }
