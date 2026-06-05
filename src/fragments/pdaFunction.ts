@@ -91,7 +91,7 @@ function getPdaDerivationFunctionFragment(
 
 function getSeedsArrayFragment(node: PdaNode): Fragment {
     if (node.seeds.length === 0) {
-        return fragment`const seedsBuffer: Buffer[] = [];`;
+        return fragment`const seedsBuffer: Uint8Array[] = [];`;
     }
 
     const seedEntries = node.seeds.map(seed => {
@@ -126,7 +126,7 @@ function getSeedsArrayFragment(node: PdaNode): Fragment {
 
     const entriesContent = mergeFragments(seedEntries, cs => cs.map(c => `        ${c},`).join('\n'));
 
-    return fragment`const seedsBuffer: Buffer[] = [\n${entriesContent}\n    ];`;
+    return fragment`const seedsBuffer: Uint8Array[] = [\n${entriesContent}\n    ];`;
 }
 
 function getSeedEncodingFragment(seedName: string, seedType: TypeNode): Fragment {
