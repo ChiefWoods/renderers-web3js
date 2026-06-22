@@ -145,14 +145,14 @@ function getSeedEncodingFragment(seedName: string, seedType: TypeNode): Fragment
     } else if (seedType.kind === 'numberTypeNode') {
         // Numbers need to be encoded as buffers
         const format = seedType.format;
-        if (format === 'u8') {
+        if (format === 'u8' || format === 'i8') {
             return fragment`Buffer.from([seeds.${seedName}])`;
-        } else if (format === 'u16') {
-            return fragment`Buffer.from(new Uint8Array(new Uint16Array([seeds.${seedName}]).buffer))`;
-        } else if (format === 'u32') {
-            return fragment`Buffer.from(new Uint8Array(new Uint32Array([seeds.${seedName}]).buffer))`;
-        } else if (format === 'u64') {
-            return fragment`Buffer.from(new Uint8Array(new BigUint64Array([BigInt(seeds.${seedName})]).buffer))`;
+        } else if (format === 'u16' || format === 'i16') {
+            return fragment`Buffer.from(new Uint8Array(new ${format === 'i16' ? 'Int' : 'Uint'}16Array([seeds.${seedName}]).buffer))`;
+        } else if (format === 'u32' || format === 'i32') {
+            return fragment`Buffer.from(new Uint8Array(new ${format === 'i32' ? 'Int' : 'Uint'}32Array([seeds.${seedName}]).buffer))`;
+        } else if (format === 'u64' || format === 'i64') {
+            return fragment`Buffer.from(new Uint8Array(new ${format === 'i64' ? 'BigInt64' : 'BigUint64'}Array([BigInt(seeds.${seedName})]).buffer))`;
         }
         return fragment`Buffer.from([seeds.${seedName}])`;
     } else if (seedType.kind === 'bytesTypeNode') {
