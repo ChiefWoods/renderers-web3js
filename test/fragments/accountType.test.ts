@@ -121,6 +121,9 @@ test('it generates fetchProgramAccounts when account has size', () => {
     expect(result.content).toContain('export async function fetchProgramAccountsNonce');
     expect(result.content).toContain('connection.getProgramAccounts(programId');
     expect(result.content).toContain('{ dataSize: 80 }');
+    expect(result.content).toContain('filters?: GetProgramAccountsFilter[]');
+    expect(result.content).toContain('filters: [...[{ dataSize: 80 }], ...(options?.filters ?? [])]');
+    expect(result.content).toContain('GetProgramAccountsFilter');
     expect(result.content).toContain('Promise<NonceAccount[]>');
 });
 

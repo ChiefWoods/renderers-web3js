@@ -215,11 +215,14 @@ function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefine
         fragment`export async function ${functionName}(
     connection: Connection,
     programId: PublicKey,
-    options?: { commitment?: 'processed' | 'confirmed' | 'finalized' }
+    options?: {
+        commitment?: 'processed' | 'confirmed' | 'finalized';
+        filters?: GetProgramAccountsFilter[];
+    }
 ): Promise<${accountTypeName}[]> {
     const accounts = await connection.getProgramAccounts(programId, {
         commitment: options?.commitment,
-        filters: ${filtersLiteral},
+        filters: [...${filtersLiteral}, ...(options?.filters ?? [])],
     });
     return accounts.map(({ pubkey, account }) => ({
         address: pubkey,
@@ -227,6 +230,6 @@ function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefine
     }));
 }`,
         'web3',
-        ['Connection', 'PublicKey'],
+        ['Connection', 'GetProgramAccountsFilter', 'PublicKey'],
     );
 }
