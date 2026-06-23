@@ -1,6 +1,16 @@
-import { camelCase, ProgramNode } from '@codama/nodes';
+import { camelCase, ConstantNode, isNode, ProgramNode, resolveNestedTypeNode, ValueNode } from '@codama/nodes';
+import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment } from '../utils';
+import {
+    addFragmentImports,
+    Fragment,
+    fragment,
+    getCodeFileFragment,
+    getJsDocFragment,
+    getStringValueAsHexadecimals,
+    mergeFragments,
+} from '../utils';
+import { getValueVisitor, ValueVisitor } from '../visitors/getValueVisitor';
 
 export function getProgramConstantsFragment(node: ProgramNode): Fragment {
     const fragments: Fragment[] = [];
@@ -8,7 +18,19 @@ export function getProgramConstantsFragment(node: ProgramNode): Fragment {
     // 1. Program ID constant
     fragments.push(getProgramIdFragment(node));
 
-    // 2. Export all from subdirectories
+    // 2. Program constants from the IDL
+    const constants = node.constants ?? [];
+    if (constants.length > 0) {
+        const valueVisitor = getValueVisitor();
+        fragments.push(
+            mergeFragments(
+                constants.map(constant => getConstantFragment(constant, valueVisitor)),
+                cs => cs.join('\n'),
+            ),
+        );
+    }
+
+    // 3. Export all from subdirectories
     fragments.push(getExportsFragment(node));
 
     // Combine fragments and prepend imports
@@ -19,6 +41,10 @@ export function getProgramIdConstantName(programName: string): string {
     return `${programName.toUpperCase()}_PROGRAM_ID`;
 }
 
+export function getConstantExportName(name: string): string {
+    return name.toUpperCase();
+}
+
 function getProgramIdFragment(node: ProgramNode): Fragment {
     const constantName = getProgramIdConstantName(node.name);
 
@@ -27,6 +53,55 @@ function getProgramIdFragment(node: ProgramNode): Fragment {
         'web3',
         'PublicKey',
     );
+}
+
+function getConstantFragment(constant: ConstantNode, valueVisitor: ValueVisitor): Fragment {
+    const name = getConstantExportName(constant.name);
+    const value = getConstantValueFragment(constant, valueVisitor);
+
+    return mergeFragments([getJsDocFragment(constant.docs), fragment`export const ${name} = ${value};`], cs =>
+        cs.join('\n'),
+    );
+}
+
+function getConstantValueFragment(constant: ConstantNode, valueVisitor: ValueVisitor): Fragment {
+    const type = resolveNestedTypeNode(constant.type);
+
+    if (isNode(type, 'publicKeyTypeNode')) {
+        return addFragmentImports(fragment`new PublicKey(${visit(constant.value, valueVisitor)})`, 'web3', 'PublicKey');
+    }
+
+    if (isNode(type, 'bytesTypeNode') && constant.value.kind === 'bytesValueNode') {
+        const hex = getStringValueAsHexadecimals(constant.value.encoding, constant.value.data).slice(2);
+        return addFragmentImports(fragment`Buffer.from('${hex}', 'hex')`, 'buffer', 'Buffer');
+    }
+
+    if (
+        isNode(type, 'numberTypeNode') &&
+        constant.value.kind === 'numberValueNode' &&
+        ['u64', 'u128', 'i64', 'i128'].includes(type.format)
+    ) {
+        return fragment`${constant.value.number}n`;
+    }
+
+    if (constant.value.kind === 'stringValueNode') {
+        return fragment`${JSON.stringify(normalizeStringConstantValue(constant.value.string))}`;
+    }
+
+    return visit(constant.value as ValueNode, valueVisitor);
+}
+
+function normalizeStringConstantValue(value: string): string {
+    try {
+        const parsed: unknown = JSON.parse(value);
+        if (typeof parsed === 'string') {
+            return parsed;
+        }
+    } catch {
+        // Fall through to the raw value.
+    }
+
+    return value;
 }
 
 function getExportsFragment(node: ProgramNode): Fragment {
