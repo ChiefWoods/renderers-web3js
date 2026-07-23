@@ -3,7 +3,7 @@
     "before": [],
     "scripts": {
         "demo": {
-            "from": "renderers-web3js",
+            "from": "../../../dist/index.node.cjs",
             "args": ["docs"]
         }
     }

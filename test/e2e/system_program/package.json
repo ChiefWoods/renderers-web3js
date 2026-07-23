@@ -1,14 +1,11 @@
 {
-    "name": "renderers-web3js-e2e-system_program",
+    "name": "@renderers-web3js/e2e-system-program",
     "private": true,
     "version": "0.0.0",
     "type": "commonjs",
     "sideEffects": false,
     "license": "MIT",
     "scripts": {
-        "test": "../../../node_modules/.bin/codama run demo"
-    },
-    "devDependencies": {
-        "renderers-web3js": "file:../../.."
+        "test": "codama run demo"
     }
 }

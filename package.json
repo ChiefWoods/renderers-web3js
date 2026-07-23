@@ -16,6 +16,9 @@
         "type": "git",
         "url": "https://github.com/ChiefWoods/renderers-web3js"
     },
+    "workspaces": [
+        "test/e2e/*"
+    ],
     "files": [
         "./dist/types",
         "./dist/index.*"
