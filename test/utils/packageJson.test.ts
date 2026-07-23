@@ -1,6 +1,7 @@
 import { expect, test } from 'vitest';
 
-import { createNewPackageJson, updateExistingPackageJson } from '../../src/utils/packageJson';
+import { createImportMap } from '../../src/utils/importMap';
+import { createNewPackageJson, getUsedDependencyVersions, updateExistingPackageJson } from '../../src/utils/packageJson';
 
 test('it creates a package.json with used dependencies', () => {
     const packageJson = createNewPackageJson({
@@ -25,4 +26,20 @@ test('it adds missing dependencies to an existing package.json', () => {
         '@solana/web3.js': '3.0.0-rc.2',
         leftpad: '1.0.0',
     });
+});
+
+test('getUsedDependencyVersions applies dependencyVersions overrides', () => {
+    const renderMap = new Map([
+        [
+            'index.ts',
+            {
+                content: '',
+                imports: createImportMap([['@solana/web3.js', 'Address']]),
+            },
+        ],
+    ]) as never;
+
+    const versions = getUsedDependencyVersions(renderMap, { '@solana/web3.js': '^3.1.0' });
+
+    expect(versions).toEqual({ '@solana/web3.js': '^3.1.0' });
 });

@@ -53,6 +53,7 @@ The `renderVisitor` accepts the following options.
 | `nameTransformers`            | `Partial<NameTransformers>` | `{}`      | An object that enables us to override the names of any generated type, constant or function.                                   |
 | `asyncResolvers`              | `string[]`          | `[]`              | The exhaustive list of `ResolverValueNode` names whose implementation is asynchronous in TypeScript.                           |
 | `syncPackageJson`             | `boolean`           | `true`            | Whether to update the dependencies of the existing `package.json` — or create a new `package.json` when missing — inside the package folder. |
+| `dependencyVersions`          | `Record<string, string>` | `{}`         | A mapping between external package names — e.g. `@solana/web3.js` — and the version range we should use for them. The renderer offers default values for all external dependencies it relies on but this option may be used to override some of these values or add new ones. |
 
 ## Credits
 

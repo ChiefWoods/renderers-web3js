@@ -6,6 +6,7 @@ import type { NameTransformers } from './nameTransformers';
 
 export type RenderOptions = RenderMapOptions & {
     deleteFolderBeforeRendering?: boolean;
+    dependencyVersions?: Record<string, string>;
     formatCode?: boolean;
     oxfmtOptions?: OxfmtOptions;
     /** Path appended to the first renderVisitor argument. Defaults to `'src/generated'`. Pass `''` to write directly to that path. */
