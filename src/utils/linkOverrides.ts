@@ -67,11 +67,11 @@ export function getImportFromFactory(
             default:
                 throw new CodamaError(CODAMA_ERROR__UNEXPECTED_NODE_KIND, {
                     expectedKinds: [
-                        'AccountLinkNode',
-                        'DefinedTypeLinkNode',
-                        'InstructionLinkNode',
-                        'PdaLinkNode',
-                        'ProgramLinkNode',
+                        'accountLinkNode',
+                        'definedTypeLinkNode',
+                        'instructionLinkNode',
+                        'pdaLinkNode',
+                        'programLinkNode',
                         'resolverValueNode',
                     ],
                     kind: kind satisfies never,

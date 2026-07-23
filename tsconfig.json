@@ -8,7 +8,7 @@
         "forceConsistentCasingInFileNames": true,
         "inlineSources": false,
         "isolatedModules": true,
-        "lib": [],
+        "lib": ["ESNext"],
         "moduleResolution": "bundler",
         "noFallthroughCasesInSwitch": true,
         "noUnusedLocals": true,
@@ -16,7 +16,8 @@
         "preserveWatchOutput": true,
         "skipLibCheck": true,
         "strict": true,
-        "target": "ESNext"
+        "target": "ESNext",
+        "types": ["node"]
     },
     "display": "renderers-web3js",
     "include": ["src", "test"],
