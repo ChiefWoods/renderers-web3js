@@ -1,10 +1,10 @@
-import type { PrettierOptions } from './formatCode';
+import type { OxfmtOptions } from './formatCode';
 
 export type RenderOptions = RenderMapOptions & {
     deleteFolderBeforeRendering?: boolean;
     formatCode?: boolean;
+    oxfmtOptions?: OxfmtOptions;
     packageFolder?: string;
-    prettierOptions?: PrettierOptions;
 };
 
 export type RenderMapOptions = {

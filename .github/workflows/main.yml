@@ -35,7 +35,10 @@ jobs:
         run: bun run build
 
       - name: Check linting
-        run: pnpm run lint
+        run: bun run lint
+
+      - name: Check formatting
+        run: bun run format:check
 
   tests:
     name: Test

@@ -1,29 +1,35 @@
-import { Plugin } from 'prettier';
-import * as babelPlugin from 'prettier/plugins/babel';
-import * as estreePlugin from 'prettier/plugins/estree';
-import * as typeScriptPlugin from 'prettier/plugins/typescript';
-import { format } from 'prettier/standalone';
+import { format, type FormatConfig } from 'oxfmt';
 
 import type { RenderOptions } from './options';
 
-export type PrettierOptions = Parameters<typeof format>[1];
+export type OxfmtOptions = FormatConfig;
 
-const DEFAULT_PRETTIER_OPTIONS: PrettierOptions = {
-    plugins: [estreePlugin as Plugin<unknown>, typeScriptPlugin, babelPlugin],
+const DEFAULT_OXFMT_OPTIONS: OxfmtOptions = {
+    arrowParens: 'avoid',
+    bracketSameLine: false,
+    bracketSpacing: true,
+    jsxSingleQuote: false,
+    printWidth: 120,
+    quoteProps: 'as-needed',
+    semi: true,
+    singleQuote: true,
+    tabWidth: 4,
+    useTabs: false,
 };
 
 export type CodeFormatter = (code: string) => Promise<string>;
 
-export function getCodeFormatter(
-    options: Pick<RenderOptions, 'formatCode' | 'prettierOptions'>,
-): Promise<CodeFormatter> {
+export function getCodeFormatter(options: Pick<RenderOptions, 'formatCode' | 'oxfmtOptions'>): Promise<CodeFormatter> {
     const shouldFormatCode = options.formatCode ?? true;
     if (!shouldFormatCode) return Promise.resolve(code => Promise.resolve(code));
 
-    const prettierOptions: PrettierOptions = {
-        ...DEFAULT_PRETTIER_OPTIONS,
-        ...options.prettierOptions,
+    const oxfmtOptions: OxfmtOptions = {
+        ...DEFAULT_OXFMT_OPTIONS,
+        ...options.oxfmtOptions,
     };
 
-    return Promise.resolve(code => format(code, { ...prettierOptions, filepath: 'generated.ts' }));
+    return Promise.resolve(async code => {
+        const { code: formatted } = await format('generated.ts', code, oxfmtOptions);
+        return formatted;
+    });
 }

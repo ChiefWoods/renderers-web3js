@@ -63,15 +63,15 @@ written to `src/generated`.
 
 The `renderVisitor` accepts the following options.
 
-| Name                          | Type              | Default     | Description                                                                                         |
-| ----------------------------- | ----------------- | ----------- | --------------------------------------------------------------------------------------------------- |
-| `deleteFolderBeforeRendering` | `boolean`         | `true`      | Whether the output directory should be deleted before generating new files.                         |
-| `formatCode`                  | `boolean`         | `true`      | Whether generated source files should be formatted with Prettier.                                  |
-| `packageFolder`               | `string`          | `undefined` | Optional package folder associated with rendering configuration.                                    |
-| `prettierOptions`             | `PrettierOptions` | `{}`        | Additional options passed to Prettier when formatting generated code.                              |
-| `extension`                   | `string`          | `'ts'`      | File extension used for generated source files.                                                     |
-| `indexFilename`               | `string`          | `'index'`   | Base filename used for generated index files (before extension).                                   |
-| `typeIndent`                  | `string`          | `undefined` | Optional indentation string used when rendering multiline type fragments in generated source files. |
+| Name                          | Type           | Default     | Description                                                                                         |
+| ----------------------------- | -------------- | ----------- | --------------------------------------------------------------------------------------------------- |
+| `deleteFolderBeforeRendering` | `boolean`      | `true`      | Whether the output directory should be deleted before generating new files.                         |
+| `formatCode`                  | `boolean`      | `true`      | Whether generated source files should be formatted with Oxfmt.                                      |
+| `packageFolder`               | `string`       | `undefined` | Optional package folder associated with rendering configuration.                                    |
+| `oxfmtOptions`                | `OxfmtOptions` | `{}`        | Additional options passed to Oxfmt when formatting generated code.                                  |
+| `extension`                   | `string`       | `'ts'`      | File extension used for generated source files.                                                     |
+| `indexFilename`               | `string`       | `'index'`   | Base filename used for generated index files (before extension).                                    |
+| `typeIndent`                  | `string`       | `undefined` | Optional indentation string used when rendering multiline type fragments in generated source files. |
 
 ## Generated Code
 
