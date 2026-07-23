@@ -19,12 +19,12 @@ test('it generates account with struct data', () => {
     // Check AccountData interface
     expect(result.content).toContain('export interface TokenAccountData');
     expect(result.content).toContain('amount: bigint');
-    expect(result.content).toContain('owner: PublicKey');
-    expect(result.content).toContain('delegate: PublicKey');
+    expect(result.content).toContain('owner: Address');
+    expect(result.content).toContain('delegate: Address');
 
     // Check Account interface
     expect(result.content).toContain('export interface TokenAccount');
-    expect(result.content).toContain('address: PublicKey');
+    expect(result.content).toContain('address: Address');
     expect(result.content).toContain('data: TokenAccountData');
 
     // Check Borsh schema
@@ -39,7 +39,7 @@ test('it generates account with struct data', () => {
     // Check fetch function
     expect(result.content).toContain('export async function fetchTokenAccount');
     expect(result.content).toContain('connection: Connection');
-    expect(result.content).toContain('address: PublicKey');
+    expect(result.content).toContain('address: Address');
     expect(result.content).toContain('Promise<TokenAccount>');
     expect(result.content).toContain('const accountInfo = await connection.getAccountInfo(address)');
     expect(result.content).toContain('if (!accountInfo)');
@@ -54,7 +54,7 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain('Promise<TokenAccount[]>');
 
     // Check imports
-    expect(result.content).toContain("import { Connection, PublicKey } from '@solana/web3.js'");
+    expect(result.content).toContain("import { Address, Connection } from '@solana/web3.js'");
     expect(result.content).toContain('import {');
     expect(result.content).toContain("from '@solana/codecs'");
 

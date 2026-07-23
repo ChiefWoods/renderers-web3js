@@ -9,10 +9,11 @@ import { createAddMemoInstruction, MEMO_PROGRAM_ID } from '../e2e/memo/docs/inde
 
 const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
 const hasWallet = process.env.CI !== 'true' && fs.existsSync(keypairPath);
+const canSendOnChain = hasWallet && !__BROWSER__;
 
-function loadWallet(): Keypair {
+async function loadWallet(): Promise<Keypair> {
     const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
-    return Keypair.fromSecretKey(Uint8Array.from(secret));
+    return await Keypair.fromSecretKey(Uint8Array.from(secret));
 }
 
 function getConnection(): Connection {
@@ -36,8 +37,8 @@ test('defaults addMemo instruction programId to MEMO_PROGRAM_ID', () => {
     expect(ix.programId.equals(MEMO_PROGRAM_ID)).toBe(true);
 });
 
-test.skipIf(!hasWallet)('sends memo transaction on-chain', async () => {
-    const wallet = loadWallet();
+test.skipIf(!canSendOnChain)('sends memo transaction on-chain', async () => {
+    const wallet = await loadWallet();
     const connection = getConnection();
 
     const memo = `codama-memo-${Date.now()}`;

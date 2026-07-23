@@ -76,11 +76,11 @@ function getAccountInterfaceFragment(node: AccountNode): Fragment {
 
     return addFragmentImports(
         fragment`export interface ${interfaceName} {
-    address: PublicKey;
+    address: Address;
     data: ${dataInterfaceName};
 }`,
         'web3',
-        'PublicKey',
+        'Address',
     );
 }
 
@@ -135,7 +135,7 @@ function getFetchAccountFragment(node: AccountNode): Fragment {
     return addFragmentImports(
         fragment`export async function ${functionName}(
     connection: Connection,
-    address: PublicKey
+    address: Address
 ): Promise<${accountTypeName}> {
     const accountInfo = await connection.getAccountInfo(address);
     if (!accountInfo) {
@@ -147,7 +147,7 @@ function getFetchAccountFragment(node: AccountNode): Fragment {
     };
 }`,
         'web3',
-        ['Connection', 'PublicKey'],
+        ['Connection', 'Address'],
     );
 }
 
@@ -161,7 +161,7 @@ function getFetchAllAccountsFragment(node: AccountNode): Fragment {
     return addFragmentImports(
         fragment`export async function ${fetchAllMaybeFunctionName}(
     connection: Connection,
-    addresses: PublicKey[]
+    addresses: Address[]
 ): Promise<(${accountTypeName} | null)[]> {
     const accountInfos = await connection.getMultipleAccountsInfo(addresses);
     return accountInfos.map((accountInfo, index) => {
@@ -177,7 +177,7 @@ function getFetchAllAccountsFragment(node: AccountNode): Fragment {
 
 export async function ${fetchAllFunctionName}(
     connection: Connection,
-    addresses: PublicKey[]
+    addresses: Address[]
 ): Promise<${accountTypeName}[]> {
     const maybeAccounts = await ${fetchAllMaybeFunctionName}(connection, addresses);
     const missingAddresses = maybeAccounts
@@ -189,7 +189,7 @@ export async function ${fetchAllFunctionName}(
     return maybeAccounts.filter((a): a is ${accountTypeName} => a !== null);
 }`,
         'web3',
-        ['Connection', 'PublicKey'],
+        ['Connection', 'Address'],
     );
 }
 
@@ -214,7 +214,7 @@ function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefine
     return addFragmentImports(
         fragment`export async function ${functionName}(
     connection: Connection,
-    programId: PublicKey,
+    programId: Address,
     options?: {
         commitment?: 'processed' | 'confirmed' | 'finalized';
         filters?: GetProgramAccountsFilter[];
@@ -230,6 +230,6 @@ function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefine
     }));
 }`,
         'web3',
-        ['Connection', 'GetProgramAccountsFilter', 'PublicKey'],
+        ['Connection', 'GetProgramAccountsFilter', 'Address'],
     );
 }

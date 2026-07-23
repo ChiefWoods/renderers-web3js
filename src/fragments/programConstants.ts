@@ -49,9 +49,9 @@ function getProgramIdFragment(node: ProgramNode): Fragment {
     const constantName = getProgramIdConstantName(node.name);
 
     return addFragmentImports(
-        fragment`export const ${constantName} = new PublicKey('${node.publicKey}');`,
+        fragment`export const ${constantName} = new Address('${node.publicKey}');`,
         'web3',
-        'PublicKey',
+        'Address',
     );
 }
 
@@ -68,7 +68,7 @@ function getConstantValueFragment(constant: ConstantNode, valueVisitor: ValueVis
     const type = resolveNestedTypeNode(constant.type);
 
     if (isNode(type, 'publicKeyTypeNode')) {
-        return addFragmentImports(fragment`new PublicKey(${visit(constant.value, valueVisitor)})`, 'web3', 'PublicKey');
+        return addFragmentImports(fragment`new Address(${visit(constant.value, valueVisitor)})`, 'web3', 'Address');
     }
 
     if (isNode(type, 'bytesTypeNode') && constant.value.kind === 'bytesValueNode') {

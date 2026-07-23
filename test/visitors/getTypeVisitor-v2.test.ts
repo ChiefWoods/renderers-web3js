@@ -57,10 +57,10 @@ test('it renders string types', () => {
     expect(result.content).toBe('string');
 });
 
-test('it renders PublicKey with import', () => {
+test('it renders Address with import', () => {
     const result = visit(publicKeyTypeNode(), getTypeVisitor());
-    expect(result.content).toBe('PublicKey');
-    expect(result.imports.get('web3')).toContain('PublicKey');
+    expect(result.content).toBe('Address');
+    expect(result.imports.get('web3')).toContain('Address');
 });
 
 test('it renders array types', () => {
@@ -125,6 +125,6 @@ test('it renders accounts as interfaces', () => {
     );
     expect(result.content).toContain('export interface Token');
     expect(result.content).toContain('amount: bigint');
-    expect(result.content).toContain('owner: PublicKey');
-    expect(result.imports.get('web3')).toContain('PublicKey');
+    expect(result.content).toContain('owner: Address');
+    expect(result.imports.get('web3')).toContain('Address');
 });

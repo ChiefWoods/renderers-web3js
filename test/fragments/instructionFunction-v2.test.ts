@@ -31,16 +31,16 @@ test('it generates instruction with accounts and args', () => {
     );
 
     expect(result.content).toContain('export interface TransferInstructionAccounts');
-    expect(result.content).toContain('from: PublicKey');
-    expect(result.content).toContain('to: PublicKey');
-    expect(result.content).toContain('authority: PublicKey');
+    expect(result.content).toContain('from: Address');
+    expect(result.content).toContain('to: Address');
+    expect(result.content).toContain('authority: Address');
     expect(result.content).toContain('export interface TransferInstructionArgs');
     expect(result.content).toContain('amount: bigint');
     expect(result.content).toContain('const TransferInstructionDataCodec');
     expect(result.content).toContain('export function createTransferInstruction');
     expect(result.content).toContain('accounts: TransferInstructionAccounts');
     expect(result.content).toContain('args: TransferInstructionArgs');
-    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('programId: Address = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
     expect(result.content).toContain('TransactionInstruction');
     expect(result.content).toContain('const keys: AccountMeta[]');
@@ -50,7 +50,7 @@ test('it generates instruction with accounts and args', () => {
 
     // Check imports in content (getCodeFileFragment bakes imports into content)
     expect(result.content).toContain('import {');
-    expect(result.content).toContain('PublicKey');
+    expect(result.content).toContain('Address');
     expect(result.content).toContain('TransactionInstruction');
     expect(result.content).toContain('AccountMeta');
 });
@@ -75,7 +75,7 @@ test('it generates instruction with no arguments', () => {
     expect(result.content).not.toContain('InstructionDataSchema');
     expect(result.content).toContain('export function createInitializeInstruction');
     expect(result.content).toContain(
-        'accounts: InitializeInstructionAccounts, programId: PublicKey = DUMMYPRG_PROGRAM_ID',
+        'accounts: InitializeInstructionAccounts, programId: Address = DUMMYPRG_PROGRAM_ID',
     );
     expect(result.content).toContain('Buffer.alloc(0)'); // Empty buffer for no args
 });
@@ -99,7 +99,7 @@ test('it generates instruction with no accounts', () => {
     expect(result.content).toContain('export interface LogInstructionArgs');
     expect(result.content).toContain('const LogInstructionDataCodec');
     expect(result.content).toContain('export function createLogInstruction');
-    expect(result.content).toContain('args: LogInstructionArgs, programId: PublicKey = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('args: LogInstructionArgs, programId: Address = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
     expect(result.content).toContain('Buffer.from(LogInstructionDataCodec.encode(args))');
 });
@@ -117,8 +117,8 @@ test('it handles optional accounts', () => {
 
     const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
 
-    expect(result.content).toContain('source: PublicKey');
-    expect(result.content).toContain('delegate?: PublicKey'); // Optional in interface
+    expect(result.content).toContain('source: Address');
+    expect(result.content).toContain('delegate?: Address'); // Optional in interface
     expect(result.content).toContain('...(accounts.delegate ? ['); // Spread operator pattern
 });
 
@@ -176,7 +176,7 @@ test('it generates remaining account inputs when remaining accounts are argument
     );
 
     expect(result.content).toContain('signers?: Array<Keypair>;');
-    expect(result.content).toContain('args: AddMemoInstructionArgs, programId: PublicKey = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('args: AddMemoInstructionArgs, programId: Address = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('keys.push(...(args.signers ?? []).map((signer) => ({');
     expect(result.content).toContain('pubkey: signer.publicKey');
     expect(result.content).toContain('isSigner: true');
@@ -211,7 +211,7 @@ test('it generates correct semicolons for multiple remaining account fields', ()
 
     // Each field must have its own semicolon (not just one at the end)
     expect(result.content).toContain('signers?: Array<Keypair>;');
-    expect(result.content).toContain('accounts: Array<PublicKey>;');
+    expect(result.content).toContain('accounts: Array<Address>;');
 });
 
 test('it skips remaining accounts when name matches existing instruction argument', () => {

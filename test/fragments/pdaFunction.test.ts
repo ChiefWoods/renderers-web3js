@@ -27,26 +27,26 @@ test('it generates PDA function with variable seeds', () => {
 
     // Check Seeds interface
     expect(result.content).toContain('export interface AssociatedTokenPdaSeeds');
-    expect(result.content).toContain('mint: PublicKey');
-    expect(result.content).toContain('owner: PublicKey');
+    expect(result.content).toContain('mint: Address');
+    expect(result.content).toContain('owner: Address');
 
     // Check PDA function
-    expect(result.content).toContain('export function findAssociatedTokenPda');
+    expect(result.content).toContain('export async function findAssociatedTokenPda');
     expect(result.content).toContain('seeds: AssociatedTokenPdaSeeds');
-    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
-    expect(result.content).toContain('[PublicKey, number]');
+    expect(result.content).toContain('programId: Address = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('Promise<[Address, number]>');
 
     // Check seeds array
-    expect(result.content).toContain('const seedsBuffer: Buffer[]');
-    expect(result.content).toContain('seeds.mint.toBuffer()');
-    expect(result.content).toContain('seeds.owner.toBuffer()');
+    expect(result.content).toContain('const seedsBuffer: Uint8Array[]');
+    expect(result.content).toContain('seeds.mint.toBytes()');
+    expect(result.content).toContain('seeds.owner.toBytes()');
     expect(result.content).toContain("Buffer.from('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', 'utf8')");
 
     // Check return statement
-    expect(result.content).toContain('PublicKey.findProgramAddressSync(seedsBuffer, programId)');
+    expect(result.content).toContain('await Address.findProgramAddress(seedsBuffer, programId)');
 
     // Check imports
-    expect(result.content).toContain("import { PublicKey } from '@solana/web3.js'");
+    expect(result.content).toContain("import { Address } from '@solana/web3.js'");
     expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
 });
 
@@ -62,9 +62,9 @@ test('it generates PDA function with no variable seeds', () => {
     expect(result.content).not.toContain('PdaSeeds');
 
     // Check PDA function with only programId parameter
-    expect(result.content).toContain('export function findConfigPda');
-    expect(result.content).toContain('programId: PublicKey = DUMMYPRG_PROGRAM_ID');
-    expect(result.content).toContain('[PublicKey, number]');
+    expect(result.content).toContain('export async function findConfigPda');
+    expect(result.content).toContain('programId: Address = DUMMYPRG_PROGRAM_ID');
+    expect(result.content).toContain('Promise<[Address, number]>');
 
     // Check constant seed
     expect(result.content).toContain("Buffer.from('config', 'utf8')");
@@ -91,8 +91,8 @@ test('it handles empty seeds', () => {
 
     const result = getPdaFunctionFragment(node, getTypeVisitor(), 'DUMMYPRG_PROGRAM_ID');
 
-    expect(result.content).toContain('export function findGlobalPda');
-    expect(result.content).toContain('const seedsBuffer: Buffer[] = []');
+    expect(result.content).toContain('export async function findGlobalPda');
+    expect(result.content).toContain('const seedsBuffer: Uint8Array[] = []');
 });
 
 test('it generates proper function signature', () => {
@@ -105,7 +105,7 @@ test('it generates proper function signature', () => {
 
     // Check complete function signature
     expect(result.content).toMatch(
-        /export function findUserAccountPda\(seeds: UserAccountPdaSeeds, programId: PublicKey = DUMMYPRG_PROGRAM_ID\): \[PublicKey, number\]/,
+        /export async function findUserAccountPda\(seeds: UserAccountPdaSeeds, programId: Address = DUMMYPRG_PROGRAM_ID\): Promise<\[Address, number\]>/,
     );
 });
 

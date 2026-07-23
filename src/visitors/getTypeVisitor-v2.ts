@@ -218,7 +218,7 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitPublicKeyType() {
-                    return addFragmentImports(fragment`PublicKey`, 'web3', 'PublicKey');
+                    return addFragmentImports(fragment`Address`, 'web3', 'Address');
                 },
 
                 visitRemainderOptionType(node, { self }) {

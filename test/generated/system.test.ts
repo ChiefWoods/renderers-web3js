@@ -2,17 +2,18 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
+import { Address, Connection, Keypair, sendAndConfirmTransaction, Transaction } from '@solana/web3.js';
 import { expect, test } from 'vitest';
 
 import { createTransferSolInstruction, SYSTEM_PROGRAM_ID } from '../e2e/system_program/docs/index';
 
 const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
 const hasWallet = process.env.CI !== 'true' && fs.existsSync(keypairPath);
+const canSendOnChain = hasWallet && !__BROWSER__;
 
-function loadWallet(): Keypair {
+async function loadWallet(): Promise<Keypair> {
     const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
-    return Keypair.fromSecretKey(Uint8Array.from(secret));
+    return await Keypair.fromSecretKey(Uint8Array.from(secret));
 }
 
 function getConnection(): Connection {
@@ -21,8 +22,8 @@ function getConnection(): Connection {
 }
 
 test('creates transferSol instruction', () => {
-    const source = new PublicKey('11111111111111111111111111111111');
-    const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
+    const source = new Address('11111111111111111111111111111111');
+    const destination = new Address('BPFLoader1111111111111111111111111111111111');
 
     const ix = createTransferSolInstruction({ destination, source }, { amount: 5_000n }, SYSTEM_PROGRAM_ID);
 
@@ -31,16 +32,16 @@ test('creates transferSol instruction', () => {
 });
 
 test('defaults transferSol instruction programId to SYSTEM_PROGRAM_ID', () => {
-    const source = new PublicKey('11111111111111111111111111111111');
-    const destination = new PublicKey('BPFLoader1111111111111111111111111111111111');
+    const source = new Address('11111111111111111111111111111111');
+    const destination = new Address('BPFLoader1111111111111111111111111111111111');
 
     const ix = createTransferSolInstruction({ destination, source }, { amount: 5_000n });
 
     expect(ix.programId.equals(SYSTEM_PROGRAM_ID)).toBe(true);
 });
 
-test.skipIf(!hasWallet)('sends transfer transaction on-chain', async () => {
-    const wallet = loadWallet();
+test.skipIf(!canSendOnChain)('sends transfer transaction on-chain', async () => {
+    const wallet = await loadWallet();
     const connection = getConnection();
 
     const ix = createTransferSolInstruction(

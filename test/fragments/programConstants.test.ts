@@ -47,7 +47,7 @@ test('it exports bigint, bytes, and public key constants', () => {
     expect(result.content).toContain('export const MAXAMOUNT = 42n;');
     expect(result.content).toContain("export const DISCRIMINATOR = Buffer.from('deadbeef', 'hex');");
     expect(result.content).toContain(
-        'export const ADMIN = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");',
+        'export const ADMIN = new Address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");',
     );
 });
 

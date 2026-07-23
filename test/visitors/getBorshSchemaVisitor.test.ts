@@ -76,10 +76,13 @@ test('it generates bytes schema', () => {
     expect(result.imports.get('borsh')).toContain('bytes');
 });
 
-test('it generates PublicKey schema', () => {
+test('it generates Address schema', () => {
     const result = visit(publicKeyTypeNode(), getBorshSchemaVisitor());
-    expect(result.content).toBe('publicKey()');
-    expect(result.imports.get('borsh')).toContain('publicKey');
+    expect(result.content).toContain('transformCodec');
+    expect(result.content).toContain('value: Address');
+    expect(result.content).toContain('new Address(value)');
+    expect(result.imports.get('web3')).toContain('Address');
+    expect(result.imports.get('codecs')).toContain('transformCodec');
 });
 
 test('it generates option schema', () => {

@@ -200,11 +200,11 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitPublicKeyType() {
                     let codec = addFragmentImports(
-                        fragment`transformCodec(fixCodecSize(getBytesCodec(), 32), (value: PublicKey) => value.toBytes(), (value) => new PublicKey(value))`,
+                        fragment`transformCodec(fixCodecSize(getBytesCodec(), 32), (value: Address) => value.toBytes(), (value) => new Address(value))`,
                         'codecs',
                         ['transformCodec', 'fixCodecSize', 'getBytesCodec'],
                     );
-                    codec = addFragmentImports(codec, 'web3', 'PublicKey');
+                    codec = addFragmentImports(codec, 'web3', 'Address');
                     return codec;
                 },
 

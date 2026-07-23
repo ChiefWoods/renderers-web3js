@@ -138,14 +138,14 @@ function getAccountsInterfaceFragment(node: InstructionNode, resolvedInputs: Res
             resolvedInput?.defaultValue?.kind === 'programIdValueNode' ||
             resolvedInput?.defaultValue?.kind === 'accountValueNode';
         const optional = account.isOptional || hasDerivableDefault ? '?' : '';
-        const isSigner = account.isSigner === 'either' ? 'PublicKey | Keypair' : 'PublicKey';
+        const isSigner = account.isSigner === 'either' ? 'Address | Keypair' : 'Address';
 
-        return addFragmentImports(fragment`${fieldName}${optional}: ${isSigner}`, 'web3', ['PublicKey', 'Keypair']);
+        return addFragmentImports(fragment`${fieldName}${optional}: ${isSigner}`, 'web3', ['Address', 'Keypair']);
     });
 
     const fieldsContent = mergeFragments(fields, cs => cs.map(c => `    ${c};`).join('\n'));
 
-    return addFragmentImports(fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`, 'web3', 'PublicKey');
+    return addFragmentImports(fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`, 'web3', 'Address');
 }
 
 function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisitor): Fragment {
@@ -183,13 +183,13 @@ function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | u
         const optional = remainingAccount.isOptional ? '?' : '';
         const accountType =
             remainingAccount.isSigner === 'either'
-                ? 'PublicKey | Keypair'
+                ? 'Address | Keypair'
                 : remainingAccount.isSigner
                   ? 'Keypair'
-                  : 'PublicKey';
+                  : 'Address';
         return [
             addFragmentImports(fragment`${fieldName}${optional}: Array<${accountType}>`, 'web3', [
-                'PublicKey',
+                'Address',
                 'Keypair',
             ]),
         ];
@@ -361,12 +361,14 @@ function getInstructionBuilderFragment(
         params.push(`args: ${argsType}`);
     }
     if (programIdConstant) {
-        params.push(`programId: PublicKey = ${programIdConstant}`);
+        params.push(`programId: Address = ${programIdConstant}`);
     } else {
-        params.push(`programId: PublicKey`);
+        params.push(`programId: Address`);
     }
 
     const paramsStr = params.join(', ');
+
+    const hasPdaDefaults = resolvedInputs.some(input => input.defaultValue?.kind === 'pdaValueNode');
 
     const defaultFragments: Fragment[] = [];
     resolvedInputs.forEach(input => {
@@ -482,14 +484,16 @@ function getInstructionBuilderFragment(
     const functionBody = mergeFragments(bodyParts, cs => cs.join('\n    '));
 
     // Build the complete function by merging function signature with body
-    const functionSignature = fragment`export function ${functionName}(${paramsStr}): TransactionInstruction {`;
+    const functionSignature = hasPdaDefaults
+        ? fragment`export async function ${functionName}(${paramsStr}): Promise<TransactionInstruction> {`
+        : fragment`export function ${functionName}(${paramsStr}): TransactionInstruction {`;
     const functionClosing = fragment`}`;
 
     // Merge: signature + body + closing
     const result = mergeFragments([functionSignature, functionBody, functionClosing], cs => cs.join('\n    '));
 
     // Add all necessary imports
-    let finalResult = addFragmentImports(result, 'web3', ['PublicKey', 'TransactionInstruction']);
+    let finalResult = addFragmentImports(result, 'web3', ['Address', 'TransactionInstruction']);
     if (programIdConstant) {
         finalResult = addFragmentImports(finalResult, '..', programIdConstant);
     }
@@ -585,7 +589,7 @@ function getInputDefaultFragment(input: ResolvedInstructionInput, node: Instruct
             const result = addFragmentImports(
                 fragment`let ${inputName} = accounts.${inputName};
     if (!${inputName}) {
-        const [derived] = ${pdaCall};
+        const [derived] = await ${pdaCall};
         ${inputName} = derived;
     }`,
                 '../pdas/' + pdaFileName,

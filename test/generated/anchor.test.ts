@@ -2,16 +2,16 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { Connection, Keypair, sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
+import { Address, Connection, Keypair, sendAndConfirmTransaction, SystemProgram, Transaction } from '@solana/web3.js';
 import { expect, test } from 'vitest';
 
 import { createCreateInstruction, DUMMYPRG_PROGRAM_ID, fetchStorageAccount } from '../e2e/anchor/docs/index';
 import { findStorageAccountPda } from '../e2e/anchor/docs/pdas/storageAccount';
 
-function loadWallet(): Keypair {
+async function loadWallet(): Promise<Keypair> {
     const keypairPath = process.env.SOLANA_KEYPAIR_PATH ?? path.join(os.homedir(), '.config/solana/id.json');
     const secret = JSON.parse(fs.readFileSync(keypairPath, 'utf8')) as number[];
-    return Keypair.fromSecretKey(Uint8Array.from(secret));
+    return await Keypair.fromSecretKey(Uint8Array.from(secret));
 }
 
 function getConnection(): Connection {
@@ -20,12 +20,21 @@ function getConnection(): Connection {
     return new Connection(rpcUrl, 'confirmed');
 }
 
-test('creates anchor create instruction', () => {
-    const authority = Keypair.generate().publicKey;
+function dummyAddress(label: string): Address {
+    // Deterministic valid ed25519-looking base58 keys for offline instruction tests.
+    const keys: Record<string, string> = {
+        authority: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+        authority2: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+    };
+    return new Address(keys[label] ?? keys.authority);
+}
+
+test('creates anchor create instruction', async () => {
+    const authority = dummyAddress('authority');
     const uuid = `codama-anchor-${Date.now()}`;
 
-    const [storageAccount] = findStorageAccountPda({ authority, uuid }, DUMMYPRG_PROGRAM_ID);
-    const ix = createCreateInstruction(
+    const [storageAccount] = await findStorageAccountPda({ authority, uuid }, DUMMYPRG_PROGRAM_ID);
+    const ix = await createCreateInstruction(
         {
             authority,
             systemProgram: SystemProgram.programId,
@@ -43,12 +52,12 @@ test('creates anchor create instruction', () => {
     expect(ix.keys[1]?.pubkey.equals(storageAccount)).toBe(true);
 });
 
-test('defaults anchor create instruction and PDA to DUMMYPRG_PROGRAM_ID', () => {
-    const authority = Keypair.generate().publicKey;
+test('defaults anchor create instruction and PDA to DUMMYPRG_PROGRAM_ID', async () => {
+    const authority = dummyAddress('authority2');
     const uuid = `codama-anchor-${Date.now()}`;
 
-    const [storageAccount] = findStorageAccountPda({ authority, uuid });
-    const ix = createCreateInstruction(
+    const [storageAccount] = await findStorageAccountPda({ authority, uuid });
+    const ix = await createCreateInstruction(
         {
             authority,
             systemProgram: SystemProgram.programId,
@@ -65,13 +74,13 @@ test('defaults anchor create instruction and PDA to DUMMYPRG_PROGRAM_ID', () => 
 });
 
 test('sends anchor create transaction on-chain and fetches storage', async () => {
-    const wallet = loadWallet();
+    const wallet = await loadWallet();
     const connection = getConnection();
     const uuid = `codama-anchor-${Date.now()}`;
     const text = `hello-anchor-${Date.now()}`;
 
-    const [storageAccount] = findStorageAccountPda({ authority: wallet.publicKey, uuid }, DUMMYPRG_PROGRAM_ID);
-    const ix = createCreateInstruction(
+    const [storageAccount] = await findStorageAccountPda({ authority: wallet.publicKey, uuid }, DUMMYPRG_PROGRAM_ID);
+    const ix = await createCreateInstruction(
         {
             authority: wallet.publicKey,
             systemProgram: SystemProgram.programId,

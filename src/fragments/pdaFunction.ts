@@ -62,9 +62,9 @@ function getPdaDerivationFunctionFragment(
         params.push(`seeds: ${seedsType}`);
     }
     if (programIdConstant) {
-        params.push(`programId: PublicKey = ${programIdConstant}`);
+        params.push(`programId: Address = ${programIdConstant}`);
     } else {
-        params.push('programId: PublicKey');
+        params.push('programId: Address');
     }
 
     const paramsStr = params.join(', ');
@@ -74,12 +74,12 @@ function getPdaDerivationFunctionFragment(
 
     // Build function body
     const functionBody = fragment`${seedsArrayFragment}
-    return PublicKey.findProgramAddressSync(seedsBuffer, programId);`;
+    return await Address.findProgramAddress(seedsBuffer, programId);`;
 
     let functionFragment = addFragmentImports(
-        fragment`export function ${functionName}(${paramsStr}): [PublicKey, number] {\n    ${functionBody}\n}`,
+        fragment`export async function ${functionName}(${paramsStr}): Promise<[Address, number]> {\n    ${functionBody}\n}`,
         'web3',
-        'PublicKey',
+        'Address',
     );
 
     if (programIdConstant) {
@@ -112,7 +112,7 @@ function getSeedsArrayFragment(node: PdaNode): Fragment {
             } else if (seed.type.kind === 'publicKeyTypeNode' && seed.value.kind === 'publicKeyValueNode') {
                 // For publicKey seeds, decode from base58
                 const base58 = seed.value.publicKey;
-                return addFragmentImports(fragment`new PublicKey('${base58}').toBuffer()`, 'web3', 'PublicKey');
+                return addFragmentImports(fragment`new Address('${base58}').toBytes()`, 'web3', 'Address');
             }
             // Fallback for other value types
             return fragment`Buffer.from([])`;
@@ -132,7 +132,7 @@ function getSeedsArrayFragment(node: PdaNode): Fragment {
 function getSeedEncodingFragment(seedName: string, seedType: TypeNode): Fragment {
     // Handle different seed types and their encoding
     if (seedType.kind === 'publicKeyTypeNode') {
-        return fragment`seeds.${seedName}.toBuffer()`;
+        return fragment`seeds.${seedName}.toBytes()`;
     } else if (seedType.kind === 'stringTypeNode') {
         return fragment`Buffer.from(seeds.${seedName}, 'utf8')`;
     } else if (seedType.kind === 'sizePrefixTypeNode' && seedType.type.kind === 'stringTypeNode') {
