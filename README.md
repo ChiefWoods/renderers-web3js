@@ -52,6 +52,7 @@ The `renderVisitor` accepts the following options.
 | `dependencyMap`               | `Record<string, string>` | `{}`         | A mapping between import aliases and their actual package name or path in TypeScript.                                          |
 | `nameTransformers`            | `Partial<NameTransformers>` | `{}`      | An object that enables us to override the names of any generated type, constant or function.                                   |
 | `asyncResolvers`              | `string[]`          | `[]`              | The exhaustive list of `ResolverValueNode` names whose implementation is asynchronous in TypeScript.                           |
+| `syncPackageJson`             | `boolean`           | `true`            | Whether to update the dependencies of the existing `package.json` — or create a new `package.json` when missing — inside the package folder. |
 
 ## Credits
 

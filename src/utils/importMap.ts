@@ -25,7 +25,7 @@ export function mergeImportMaps(importMaps: ImportMap[]): ImportMap {
 export type PathOverrides = Record<Path, Path>;
 
 export function getImportStatements(importMap: ImportMap, pathOverrides: PathOverrides = {}): string[] {
-    const resolved = resolvePaths(importMap, pathOverrides);
+    const resolved = resolveImportMapPaths(importMap, pathOverrides);
     const statements: string[] = [];
 
     for (const [path, names] of resolved.entries()) {
@@ -42,13 +42,18 @@ export function getImportStatements(importMap: ImportMap, pathOverrides: PathOve
     return statements.sort();
 }
 
-// export function getImportMapLinks(importMap: ImportMap, pathOverrides: PathOverrides = {}): string[] {
-//     return [...resolvePaths(importMap, pathOverrides).entries()].flatMap(([path, names]) =>
-//         [...names].map(name => `- [${name}](${joinPath(path, camelCase(name))}.md)`),
-//     );
-// }
+export function getExternalDependencies(importMap: ImportMap): Set<string> {
+    return new Set(
+        [...importMap.keys()]
+            .filter(module => !module.startsWith('.'))
+            .map(module => {
+                const subPathExportIndex = module.startsWith('@') ? 2 : 1;
+                return module.split('/').slice(0, subPathExportIndex).join('/');
+            }),
+    );
+}
 
-function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): ImportMap {
+export function resolveImportMapPaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): ImportMap {
     const DEFAULT_PATH_OVERRIDES: PathOverrides = {
         'buffer-layout': '@solana/buffer-layout',
         codecs: '@solana/codecs',

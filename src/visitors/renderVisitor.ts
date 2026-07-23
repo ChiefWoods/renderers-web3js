@@ -1,7 +1,7 @@
 import { deleteDirectory, mapRenderMapContentAsync, writeRenderMap } from '@codama/renderers-core';
 import { rootNodeVisitor, visit } from '@codama/visitors-core';
 
-import { getCodeFormatter, RenderOptions } from '../utils';
+import { getCodeFormatter, RenderOptions, syncPackageJson } from '../utils';
 import { getRenderMapVisitor } from './getRenderMapVisitor';
 
 export const DEFAULT_PACKAGE_FOLDER = 'src/generated';
@@ -21,8 +21,14 @@ export function renderVisitor(path: string, options: RenderOptions = {}) {
         // Render the new files.
         let renderMap = visit(root, getRenderMapVisitor(options));
 
-        // Format generated source files, unless explicitly disabled.
+        // Create or update package.json dependencies before formatting strips fragment metadata.
         const formatCode = await getCodeFormatter(options);
+        await syncPackageJson(renderMap, formatCode, path, {
+            dependencyMap: options.dependencyMap,
+            syncPackageJson: options.syncPackageJson,
+        });
+
+        // Format generated source files, unless explicitly disabled.
         renderMap = await mapRenderMapContentAsync(renderMap, formatCode);
 
         writeRenderMap(renderMap, outputPath);

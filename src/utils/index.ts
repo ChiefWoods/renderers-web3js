@@ -6,5 +6,6 @@ export * from './importMap';
 export * from './linkOverrides';
 export * from './nameTransformers';
 export * from './options';
+export * from './packageJson';
 
 

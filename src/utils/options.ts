@@ -10,6 +10,7 @@ export type RenderOptions = RenderMapOptions & {
     oxfmtOptions?: OxfmtOptions;
     /** Path appended to the first renderVisitor argument. Defaults to `'src/generated'`. Pass `''` to write directly to that path. */
     packageFolder?: string;
+    syncPackageJson?: boolean;
 };
 
 export type RenderMapOptions = {

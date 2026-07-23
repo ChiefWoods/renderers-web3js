@@ -8,6 +8,7 @@ import {
     ImportMap,
     mergeImportMaps,
     PathOverrides,
+    resolveImportMapPaths,
 } from './importMap';
 
 export type Fragment = BaseFragment & Readonly<{ imports: ImportMap }>;
@@ -54,13 +55,17 @@ export function getImportsFragment(imports: ImportMap, pathOverrides: PathOverri
 
 export function getCodeFileFragment(fragments: Fragment[], pathOverrides: PathOverrides = {}): Fragment {
     const merged = mergeFragments(fragments, cs => cs.join('\n\n'));
+    const resolvedImports = resolveImportMapPaths(merged.imports, pathOverrides);
     const importsFragment = getImportsFragment(merged.imports, pathOverrides);
 
     if (importsFragment.content.length === 0) {
-        return merged;
+        return Object.freeze({ content: merged.content, imports: resolvedImports });
     }
 
-    return createFragment(`${importsFragment.content}\n\n${merged.content}`);
+    return Object.freeze({
+        content: `${importsFragment.content}\n\n${merged.content}`,
+        imports: resolvedImports,
+    });
 }
 
 // md based Fragment Functions
