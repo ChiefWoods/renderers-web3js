@@ -23,7 +23,7 @@ type PackageJson = {
 };
 
 export const DEFAULT_DEPENDENCY_VERSIONS: DependencyVersions = {
-    '@solana/codecs': '^3.0.3',
+    '@solana/codecs': '^6.10.0',
     '@solana/web3.js': '3.0.0-rc.2',
 };
 

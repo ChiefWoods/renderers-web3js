@@ -5,13 +5,13 @@ import { createNewPackageJson, getUsedDependencyVersions, updateExistingPackageJ
 
 test('it creates a package.json with used dependencies', () => {
     const packageJson = createNewPackageJson({
-        '@solana/codecs': '^3.0.3',
+        '@solana/codecs': '^6.10.0',
         '@solana/web3.js': '3.0.0-rc.2',
     });
 
     expect(packageJson.name).toBe('js-client');
     expect(packageJson.dependencies).toEqual({
-        '@solana/codecs': '^3.0.3',
+        '@solana/codecs': '^6.10.0',
         '@solana/web3.js': '3.0.0-rc.2',
     });
 });
