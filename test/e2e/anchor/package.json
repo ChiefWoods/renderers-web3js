@@ -12,6 +12,6 @@
         "@pratikbuilds/web3js-legacy": "file:../../.."
     },
     "dependencies": {
-        "@codama/nodes-from-anchor": "^1.2.9"
+        "@codama/nodes-from-anchor": "^1.5.1"
     }
 }
