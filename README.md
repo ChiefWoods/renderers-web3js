@@ -22,8 +22,8 @@ It takes a Solana IDL and generates code for:
 - program constants and exports
 
 Use this when your project wants generated Solana client code but still works
-with `PublicKey`, `Connection`, `TransactionInstruction`, and the rest of
-`@solana/web3.js` v1.
+with `Address`, `Connection`, `TransactionInstruction`, and the rest of
+`@solana/web3.js` v3.
 
 ## Installation
 
