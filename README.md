@@ -46,6 +46,7 @@ The `renderVisitor` accepts the following options.
 | `oxfmtOptions`                | `OxfmtOptions`      | `{}`              | The options to use when formatting the code using Oxfmt.                                                                       |
 | `customAccountData`           | `CustomDataOptions[]` | `[]`            | The names of all `AccountNodes` whose data should be manually written in TypeScript.                                           |
 | `customInstructionData`       | `CustomDataOptions[]` | `[]`            | The names of all `InstructionNodes` whose data should be manually written in TypeScript.                                       |
+| `linkOverrides`               | `LinkOverrides`     | `{}`              | An object that overrides the import path of link nodes. For instance, `{ definedTypes: { counter: 'hooked' } }` uses the `hooked` folder to import any link node referring to the `counter` type. |
 
 ## Credits
 

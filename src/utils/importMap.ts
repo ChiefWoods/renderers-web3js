@@ -56,6 +56,7 @@ function resolvePaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): 
         generatedHelpers: joinPath('..', 'helpers'),
         generatedInstructions: joinPath('..', 'instructions'),
         generatedPdas: joinPath('..', 'pdas'),
+        generatedPrograms: joinPath('..'),
         generatedTypes: joinPath('..', 'types'),
         hooked: joinPath('..', '..', 'hooked'),
         web3: '@solana/web3.js',

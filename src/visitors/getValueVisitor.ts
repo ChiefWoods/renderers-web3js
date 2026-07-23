@@ -1,12 +1,15 @@
 import { pascalCase, REGISTERED_VALUE_NODE_KINDS } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, fragment, getStringValueAsHexadecimals, mergeFragments } from '../utils';
+import { addFragmentImports, fragment, GetImportFromFunction, getStringValueAsHexadecimals, mergeFragments } from '../utils';
 
 export type ValueVisitor = ReturnType<typeof getValueVisitor>;
 
-export function getValueVisitor(input: { stack?: NodeStack } = {}) {
+export function getValueVisitor(input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
+    const getImportFrom =
+        input.getImportFrom ??
+        ((node: { kind: string }) => (node.kind === 'definedTypeLinkNode' ? 'generatedTypes' : 'generatedTypes'));
 
     return pipe(
         staticVisitor(() => fragment``, {
@@ -35,7 +38,8 @@ export function getValueVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitEnumValue(node) {
                     const enumName = pascalCase(node.enum.name);
-                    const enumType = addFragmentImports(fragment`${enumName}`, 'generatedTypes', enumName);
+                    const importFrom = getImportFrom(node.enum);
+                    const enumType = addFragmentImports(fragment`${enumName}`, importFrom, enumName);
                     return fragment`${enumType}.${pascalCase(node.variant)}`;
                 },
 

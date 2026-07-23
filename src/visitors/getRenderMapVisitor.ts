@@ -21,7 +21,13 @@ import {
     getProgramIdConstantName,
     getTypesIndexFragment,
 } from '../fragments';
-import { extractPdasFromInstructions, getDefinedTypeNodesToExtract, parseCustomDataOptions, RenderMapOptions } from '../utils';
+import {
+    extractPdasFromInstructions,
+    getDefinedTypeNodesToExtract,
+    getImportFromFactory,
+    parseCustomDataOptions,
+    RenderMapOptions,
+} from '../utils';
 import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
 import { getTypeVisitor } from './getTypeVisitor';
 
@@ -31,9 +37,14 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
     const customAccountData = parseCustomDataOptions(options.customAccountData ?? [], 'AccountData');
     const customInstructionData = parseCustomDataOptions(options.customInstructionData ?? [], 'InstructionData');
+    const getImportFrom = getImportFromFactory(
+        options.linkOverrides ?? {},
+        customAccountData,
+        customInstructionData,
+    );
     let currentProgramIdConstant: string | undefined;
-    const typeVisitor = getTypeVisitor({ stack });
-    const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
+    const typeVisitor = getTypeVisitor({ getImportFrom, stack });
+    const borshSchemaVisitor = getBorshSchemaVisitor({ getImportFrom, stack });
     const resolvedInstructionInputVisitor = getResolvedInstructionInputsVisitor();
 
     return pipe(

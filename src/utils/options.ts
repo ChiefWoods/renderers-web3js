@@ -1,5 +1,6 @@
 import type { CustomDataOptions } from './customData';
 import type { OxfmtOptions } from './formatCode';
+import type { LinkOverrides } from './linkOverrides';
 
 export type RenderOptions = RenderMapOptions & {
     deleteFolderBeforeRendering?: boolean;
@@ -12,4 +13,5 @@ export type RenderOptions = RenderMapOptions & {
 export type RenderMapOptions = {
     customAccountData?: CustomDataOptions[];
     customInstructionData?: CustomDataOptions[];
+    linkOverrides?: LinkOverrides;
 };

@@ -1,7 +1,7 @@
 import { camelCase, isNode, isScalarEnum, REGISTERED_TYPE_NODE_KINDS, resolveNestedTypeNode } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, fragment, mergeFragments } from '../utils';
+import { addFragmentImports, fragment, getLinkImportPath, GetImportFromFunction, mergeFragments } from '../utils';
 
 export type BorshSchemaVisitor = ReturnType<typeof getBorshSchemaVisitor>;
 
@@ -18,8 +18,10 @@ function getNumberCodec(format: string, endian: 'be' | 'le') {
     return addFragmentImports(fragment`${fn}()`, 'codecs', fn);
 }
 
-export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
+export function getBorshSchemaVisitor(input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
+    const getImportFrom =
+        input.getImportFrom ?? ((node: { kind: string }) => (node.kind === 'definedTypeLinkNode' ? 'generatedTypes' : 'generatedTypes'));
 
     return pipe(
         staticVisitor(() => fragment``, {
@@ -80,9 +82,10 @@ export function getBorshSchemaVisitor(input: { stack?: NodeStack } = {}) {
 
                 visitDefinedTypeLink(node) {
                     const codecName = `${camelCase(node.name)}Codec`;
+                    const importFrom = getImportFrom(node);
                     return addFragmentImports(
                         fragment`${codecName}`,
-                        `generatedTypes/${camelCase(node.name)}`,
+                        getLinkImportPath(importFrom, camelCase(node.name)),
                         codecName,
                     );
                 },
