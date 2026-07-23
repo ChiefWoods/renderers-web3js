@@ -139,6 +139,11 @@ For renderer changes, it is helpful to:
 - run `bun run build`
 - run the relevant tests, or `bun run test`
 
+## Credits
+
+This project is based on [`@pratikbuilds/web3js-legacy`](https://github.com/pratikbuilds/renderers-js-web3js)
+by [Pratik](https://github.com/pratikbuilds).
+
 ## License
 
 MIT
