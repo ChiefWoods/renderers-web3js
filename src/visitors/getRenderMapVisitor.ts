@@ -46,6 +46,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     );
     const nameApi = getNameApi({ ...DEFAULT_NAME_TRANSFORMERS, ...options.nameTransformers });
     const asyncResolvers = (options.asyncResolvers ?? []).map(camelCase);
+    const nonScalarEnums = (options.nonScalarEnums ?? []).map(camelCase);
     const internalNodes = (options.internalNodes ?? []).map(camelCase);
     const renderParentInstructions = options.renderParentInstructions ?? false;
     const dependencyMap = options.dependencyMap ?? {};
@@ -127,7 +128,13 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         const renderMaps = [
                             createRenderMap(
                                 `index.ts`,
-                                getProgramConstantsFragment(programForExports, internalNodes, dependencyMap, nameApi),
+                                getProgramConstantsFragment(
+                                    programForExports,
+                                    internalNodes,
+                                    dependencyMap,
+                                    nameApi,
+                                    nonScalarEnums,
+                                ),
                             ),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),

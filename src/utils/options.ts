@@ -22,5 +22,6 @@ export type RenderMapOptions = {
     internalNodes?: string[];
     linkOverrides?: LinkOverrides;
     nameTransformers?: Partial<NameTransformers>;
+    nonScalarEnums?: string[];
     renderParentInstructions?: boolean;
 };

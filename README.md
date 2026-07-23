@@ -54,6 +54,7 @@ The `renderVisitor` accepts the following options.
 | `asyncResolvers`              | `string[]`          | `[]`              | The exhaustive list of `ResolverValueNode` names whose implementation is asynchronous in TypeScript.                           |
 | `syncPackageJson`             | `boolean`           | `true`            | Whether to update the dependencies of the existing `package.json` — or create a new `package.json` when missing — inside the package folder. |
 | `dependencyVersions`          | `Record<string, string>` | `{}`         | A mapping between external package names — e.g. `@solana/web3.js` — and the version range we should use for them. The renderer offers default values for all external dependencies it relies on but this option may be used to override some of these values or add new ones. |
+| `nonScalarEnums`              | `string[]`          | `[]`              | The names of enum variants with no data that should be treated as a data union instead of a native `enum` type. This is only useful if you are referencing an enum value in your Codama IDL. |
 
 ## Credits
 

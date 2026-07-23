@@ -66,6 +66,13 @@ test('it renders enum values', () => {
     );
 });
 
+test('it renders non-scalar enum values via constructors', () => {
+    const result = visit(enumValueNode('direction', 'left'), getValueVisitor({ nonScalarEnums: ['direction'] }));
+    expect(result).toStrictEqual(
+        addFragmentImports(fragment`direction('Left')`, 'generatedTypes', 'direction'),
+    );
+});
+
 test('it renders map values', () => {
     expectValue(
         mapValueNode([

@@ -21,6 +21,7 @@ export function getProgramConstantsFragment(
     internalNodes: CamelCaseString[] = [],
     dependencyMap: PathOverrides = {},
     nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS),
+    nonScalarEnums: CamelCaseString[] = [],
 ): Fragment {
     const fragments: Fragment[] = [];
 
@@ -30,7 +31,7 @@ export function getProgramConstantsFragment(
     // 2. Program constants from the IDL
     const constants = node.constants ?? [];
     if (constants.length > 0) {
-        const valueVisitor = getValueVisitor();
+        const valueVisitor = getValueVisitor({ nonScalarEnums });
         fragments.push(
             mergeFragments(
                 constants.map(constant => getConstantFragment(constant, valueVisitor)),

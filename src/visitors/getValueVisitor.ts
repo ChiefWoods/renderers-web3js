@@ -1,12 +1,19 @@
-import { pascalCase, REGISTERED_VALUE_NODE_KINDS } from '@codama/nodes';
+import { camelCase, CamelCaseString, pascalCase, REGISTERED_VALUE_NODE_KINDS } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
 import { addFragmentImports, fragment, GetImportFromFunction, getStringValueAsHexadecimals, mergeFragments } from '../utils';
 
 export type ValueVisitor = ReturnType<typeof getValueVisitor>;
 
-export function getValueVisitor(input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {}) {
+export function getValueVisitor(
+    input: {
+        getImportFrom?: GetImportFromFunction;
+        nonScalarEnums?: CamelCaseString[];
+        stack?: NodeStack;
+    } = {},
+) {
     const stack = input.stack ?? new NodeStack();
+    const nonScalarEnums = input.nonScalarEnums ?? [];
     const getImportFrom =
         input.getImportFrom ??
         ((node: { kind: string }) => (node.kind === 'definedTypeLinkNode' ? 'generatedTypes' : 'generatedTypes'));
@@ -36,9 +43,29 @@ export function getValueVisitor(input: { getImportFrom?: GetImportFromFunction; 
                     return visit(node.value, self);
                 },
 
-                visitEnumValue(node) {
+                visitEnumValue(node, { self }) {
                     const enumName = pascalCase(node.enum.name);
                     const importFrom = getImportFrom(node.enum);
+                    const isNonScalar = nonScalarEnums.includes(node.enum.name);
+
+                    if (isNonScalar) {
+                        const constructorName = camelCase(node.enum.name);
+                        const variantName = pascalCase(node.variant);
+                        if (!node.value) {
+                            return addFragmentImports(
+                                fragment`${constructorName}('${variantName}')`,
+                                importFrom,
+                                constructorName,
+                            );
+                        }
+                        const value = visit(node.value, self);
+                        return addFragmentImports(
+                            fragment`${constructorName}('${variantName}', ${value})`,
+                            importFrom,
+                            constructorName,
+                        );
+                    }
+
                     const enumType = addFragmentImports(fragment`${enumName}`, importFrom, enumName);
                     return fragment`${enumType}.${pascalCase(node.variant)}`;
                 },
