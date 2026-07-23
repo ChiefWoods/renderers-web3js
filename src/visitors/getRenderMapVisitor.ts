@@ -22,9 +22,11 @@ import {
     getTypesIndexFragment,
 } from '../fragments';
 import {
+    DEFAULT_NAME_TRANSFORMERS,
     extractPdasFromInstructions,
     getDefinedTypeNodesToExtract,
     getImportFromFactory,
+    getNameApi,
     parseCustomDataOptions,
     RenderMapOptions,
 } from '../utils';
@@ -42,6 +44,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         customAccountData,
         customInstructionData,
     );
+    const nameApi = getNameApi({ ...DEFAULT_NAME_TRANSFORMERS, ...options.nameTransformers });
     const internalNodes = (options.internalNodes ?? []).map(camelCase);
     const renderParentInstructions = options.renderParentInstructions ?? false;
     const dependencyMap = options.dependencyMap ?? {};
@@ -87,6 +90,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             currentProgramIdConstant,
                             customInstructionData,
                             dependencyMap,
+                            nameApi,
                         ),
                     );
                 },
@@ -99,7 +103,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 },
 
                 visitProgram(node, { self }) {
-                    currentProgramIdConstant = getProgramIdConstantName(node.name);
+                    currentProgramIdConstant = getProgramIdConstantName(node.name, nameApi);
                     try {
                         const instructionsToRender = getAllInstructionsWithSubs(node, {
                             leavesOnly: !renderParentInstructions,
@@ -120,7 +124,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         const renderMaps = [
                             createRenderMap(
                                 `index.ts`,
-                                getProgramConstantsFragment(programForExports, internalNodes, dependencyMap),
+                                getProgramConstantsFragment(programForExports, internalNodes, dependencyMap, nameApi),
                             ),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),

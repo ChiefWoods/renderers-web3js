@@ -50,6 +50,7 @@ The `renderVisitor` accepts the following options.
 | `internalNodes`               | `string[]`          | `[]`              | The names of all nodes that should be generated but not exported by the `index.ts` files.                                      |
 | `renderParentInstructions`    | `boolean`           | `false`           | When using nested instructions, whether the parent instructions should also be rendered. When set to `false` (default), only the instruction leaves are being rendered. |
 | `dependencyMap`               | `Record<string, string>` | `{}`         | A mapping between import aliases and their actual package name or path in TypeScript.                                          |
+| `nameTransformers`            | `Partial<NameTransformers>` | `{}`      | An object that enables us to override the names of any generated type, constant or function.                                   |
 
 ## Credits
 

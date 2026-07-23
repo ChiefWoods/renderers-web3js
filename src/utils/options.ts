@@ -2,6 +2,7 @@ import type { CustomDataOptions } from './customData';
 import type { OxfmtOptions } from './formatCode';
 import type { PathOverrides } from './importMap';
 import type { LinkOverrides } from './linkOverrides';
+import type { NameTransformers } from './nameTransformers';
 
 export type RenderOptions = RenderMapOptions & {
     deleteFolderBeforeRendering?: boolean;
@@ -17,5 +18,6 @@ export type RenderMapOptions = {
     dependencyMap?: PathOverrides;
     internalNodes?: string[];
     linkOverrides?: LinkOverrides;
+    nameTransformers?: Partial<NameTransformers>;
     renderParentInstructions?: boolean;
 };

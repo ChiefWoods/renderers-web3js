@@ -3,12 +3,15 @@ import { visit } from '@codama/visitors-core';
 
 import {
     addFragmentImports,
+    DEFAULT_NAME_TRANSFORMERS,
     Fragment,
     fragment,
     getCodeFileFragment,
     getJsDocFragment,
+    getNameApi,
     getStringValueAsHexadecimals,
     mergeFragments,
+    NameApi,
     PathOverrides,
 } from '../utils';
 import { getValueVisitor, ValueVisitor } from '../visitors/getValueVisitor';
@@ -17,11 +20,12 @@ export function getProgramConstantsFragment(
     node: ProgramNode,
     internalNodes: CamelCaseString[] = [],
     dependencyMap: PathOverrides = {},
+    nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS),
 ): Fragment {
     const fragments: Fragment[] = [];
 
     // 1. Program ID constant
-    fragments.push(getProgramIdFragment(node));
+    fragments.push(getProgramIdFragment(node, nameApi));
 
     // 2. Program constants from the IDL
     const constants = node.constants ?? [];
@@ -42,16 +46,16 @@ export function getProgramConstantsFragment(
     return getCodeFileFragment(fragments, dependencyMap);
 }
 
-export function getProgramIdConstantName(programName: string): string {
-    return `${programName.toUpperCase()}_PROGRAM_ID`;
+export function getProgramIdConstantName(programName: string, nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS)): string {
+    return nameApi.programAddressConstant(programName);
 }
 
 export function getConstantExportName(name: string): string {
     return name.toUpperCase();
 }
 
-function getProgramIdFragment(node: ProgramNode): Fragment {
-    const constantName = getProgramIdConstantName(node.name);
+function getProgramIdFragment(node: ProgramNode, nameApi: NameApi): Fragment {
+    const constantName = getProgramIdConstantName(node.name, nameApi);
 
     return addFragmentImports(
         fragment`export const ${constantName} = new Address('${node.publicKey}');`,

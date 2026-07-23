@@ -9,14 +9,23 @@ import {
 } from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments, ParsedCustomDataOptions, PathOverrides } from '../utils';
+import {
+    addFragmentImports,
+    DEFAULT_NAME_TRANSFORMERS,
+    Fragment,
+    fragment,
+    getCodeFileFragment,
+    getNameApi,
+    mergeFragments,
+    NameApi,
+    ParsedCustomDataOptions,
+    PathOverrides,
+} from '../utils';
 import { BorshSchemaVisitor, getValueVisitor, TypeVisitor } from '../visitors';
 
 type CustomInstructionData = NonNullable<ReturnType<ParsedCustomDataOptions['get']>>;
 
-function getUserArgs(node: InstructionNode) {
-    return node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
-}
+const defaultNameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS);
 
 function getDiscriminatorArg(node: InstructionNode) {
     return node.arguments.find(
@@ -95,7 +104,9 @@ export function getInstructionFunctionFragment(
     programIdConstant?: string,
     customInstructionData: ParsedCustomDataOptions = new Map(),
     dependencyMap: PathOverrides = {},
+    nameApi?: NameApi,
 ): Fragment {
+    const names = nameApi ?? defaultNameApi;
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
     const customData = customInstructionData.get(node.name);
@@ -104,34 +115,49 @@ export function getInstructionFunctionFragment(
 
     // 1. Generate Accounts interface (if there are accounts)
     if (hasAccounts) {
-        fragments.push(getAccountsInterfaceFragment(node, resolvedInputs));
+        fragments.push(getAccountsInterfaceFragment(node, resolvedInputs, names));
     }
 
     // 2. Generate Args interface (if there are arguments or remaining accounts)
     const hasRemainingAccountArgs = !!getRemainingAccountsArgsFragment(node)?.length;
     if (customData) {
-        fragments.push(getCustomArgsInterfaceFragment(node, customData));
+        fragments.push(getCustomArgsInterfaceFragment(node, customData, names));
     } else if (hasArgs || hasRemainingAccountArgs) {
-        fragments.push(getArgsInterfaceFragment(node, typeVisitor));
+        fragments.push(getArgsInterfaceFragment(node, typeVisitor, names));
     }
 
     // 3. Generate Borsh schema (if there are arguments and not custom)
     if (hasArgs && !customData) {
-        fragments.push(getInstructionSchemaFragment(node, borshSchemaVisitor));
+        fragments.push(getInstructionSchemaFragment(node, borshSchemaVisitor, names));
     }
 
     // 4. Generate the instruction builder function
     fragments.push(
-        getInstructionBuilderFragment(node, hasAccounts, hasArgs, resolvedInputs, programIdConstant, customData),
+        getInstructionBuilderFragment(
+            node,
+            hasAccounts,
+            hasArgs,
+            resolvedInputs,
+            programIdConstant,
+            customData,
+            names,
+        ),
     );
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments, dependencyMap);
 }
 
-function getAccountsInterfaceFragment(node: InstructionNode, resolvedInputs: ResolvedInstructionInput[]): Fragment {
-    const name = pascalCase(node.name);
-    const interfaceName = `${name}InstructionAccounts`;
+function getUserArgs(node: InstructionNode) {
+    return node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
+}
+
+function getAccountsInterfaceFragment(
+    node: InstructionNode,
+    resolvedInputs: ResolvedInstructionInput[],
+    nameApi: NameApi,
+): Fragment {
+    const interfaceName = nameApi.instructionAccountsType(node.name);
 
     if (node.accounts.length === 0) {
         return fragment``;
@@ -157,9 +183,8 @@ function getAccountsInterfaceFragment(node: InstructionNode, resolvedInputs: Res
     return addFragmentImports(fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`, 'web3', 'Address');
 }
 
-function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisitor): Fragment {
-    const name = pascalCase(node.name);
-    const interfaceName = `${name}InstructionArgs`;
+function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisitor, nameApi: NameApi): Fragment {
+    const interfaceName = nameApi.instructionArgsType(node.name);
 
     // Filter out arguments with defaultValueStrategy: 'omitted' (like discriminators)
     const userArgs = node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
@@ -181,9 +206,12 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
     return fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`;
 }
 
-function getCustomArgsInterfaceFragment(node: InstructionNode, customData: CustomInstructionData): Fragment {
-    const name = pascalCase(node.name);
-    const interfaceName = `${name}InstructionArgs`;
+function getCustomArgsInterfaceFragment(
+    node: InstructionNode,
+    customData: CustomInstructionData,
+    nameApi: NameApi,
+): Fragment {
+    const interfaceName = nameApi.instructionArgsType(node.name);
     const dataTypeName = pascalCase(customData.importAs);
     const codecName = `${dataTypeName}Codec`;
     const remainingArgsFields = getRemainingAccountsArgsFragment(node);
@@ -239,9 +267,12 @@ function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | u
     return fragments;
 }
 
-function getInstructionSchemaFragment(node: InstructionNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
-    const name = pascalCase(node.name);
-    const codecName = `${name}InstructionDataCodec`;
+function getInstructionSchemaFragment(
+    node: InstructionNode,
+    borshSchemaVisitor: BorshSchemaVisitor,
+    nameApi: NameApi,
+): Fragment {
+    const codecName = nameApi.instructionDataCodec(node.name);
 
     if (node.arguments.length === 0) {
         return fragment``;
@@ -376,12 +407,14 @@ function getInstructionBuilderFragment(
     resolvedInputs: ResolvedInstructionInput[],
     programIdConstant?: string,
     customData?: CustomInstructionData,
+    nameApi: NameApi = defaultNameApi,
 ): Fragment {
-    const name = pascalCase(node.name);
-    const functionName = `create${name}Instruction`;
-    const accountsType = `${name}InstructionAccounts`;
-    const argsType = `${name}InstructionArgs`;
-    const codecName = customData ? `${pascalCase(customData.importAs)}Codec` : `${name}InstructionDataCodec`;
+    const functionName = nameApi.instructionCreateFunction(node.name);
+    const accountsType = nameApi.instructionAccountsType(node.name);
+    const argsType = nameApi.instructionArgsType(node.name);
+    const codecName = customData
+        ? `${pascalCase(customData.importAs)}Codec`
+        : nameApi.instructionDataCodec(node.name);
 
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);
