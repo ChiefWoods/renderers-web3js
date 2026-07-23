@@ -4,7 +4,7 @@
     "scripts": {
         "demo": {
             "from": "../../../dist/index.node.cjs",
-            "args": ["docs"]
+            "args": ["docs", { "packageFolder": "" }]
         }
     }
 }

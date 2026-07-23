@@ -29,10 +29,8 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const linkables = new LinkableDictionary();
     const stack = new NodeStack();
 
-    const extension = options.extension ?? 'ts';
-    const indexFilename = options.indexFilename ?? 'index';
     let currentProgramIdConstant: string | undefined;
-    const typeVisitor = getTypeVisitor({ stack, typeIndent: options.typeIndent });
+    const typeVisitor = getTypeVisitor({ stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
     const resolvedInstructionInputVisitor = getResolvedInstructionInputsVisitor();
 
@@ -44,21 +42,21 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
             extendVisitor(v, {
                 visitAccount(node) {
                     return createRenderMap(
-                        `accounts/${camelCase(node.name)}.${extension}`,
+                        `accounts/${camelCase(node.name)}.ts`,
                         getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
                 },
 
                 visitDefinedType(node) {
                     return createRenderMap(
-                        `types/${camelCase(node.name)}.${extension}`,
+                        `types/${camelCase(node.name)}.ts`,
                         getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor),
                     );
                 },
 
                 visitInstruction(node) {
                     return createRenderMap(
-                        `instructions/${camelCase(node.name)}.${extension}`,
+                        `instructions/${camelCase(node.name)}.ts`,
                         getInstructionFunctionFragment(
                             node,
                             typeVisitor,
@@ -71,7 +69,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
                 visitPda(node) {
                     return createRenderMap(
-                        `pdas/${camelCase(node.name)}.${extension}`,
+                        `pdas/${camelCase(node.name)}.ts`,
                         getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant),
                     );
                 },
@@ -83,7 +81,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         const allPdas = [...node.pdas, ...extractedPdas];
 
                         const renderMaps = [
-                            createRenderMap(`${indexFilename}.${extension}`, getProgramConstantsFragment(node)),
+                            createRenderMap(`index.ts`, getProgramConstantsFragment(node)),
                             ...node.accounts.map(n => visit(n, self)),
                             ...node.definedTypes.map(n => visit(n, self)),
                             ...node.instructions.map(n => visit(n, self)),
@@ -93,9 +91,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
                         // Only create types index file if there are defined types
                         if (node.definedTypes.length > 0) {
-                            renderMaps.push(
-                                createRenderMap(`types/${indexFilename}.${extension}`, getTypesIndexFragment(node)),
-                            );
+                            renderMaps.push(createRenderMap(`types/index.ts`, getTypesIndexFragment(node)));
                         }
 
                         return mergeRenderMaps(renderMaps);

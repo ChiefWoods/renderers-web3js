@@ -4,10 +4,13 @@ import { rootNodeVisitor, visit } from '@codama/visitors-core';
 import { getCodeFormatter, RenderOptions } from '../utils';
 import { getRenderMapVisitor } from './getRenderMapVisitor';
 
+export const DEFAULT_PACKAGE_FOLDER = 'src/generated';
+
 export function renderVisitor(path: string, options: RenderOptions = {}) {
     return rootNodeVisitor(async root => {
-        const outputPath = options.packageFolder
-            ? `${path.replace(/\/$/, '')}/${options.packageFolder.replace(/^\//, '')}`
+        const packageFolder = options.packageFolder ?? DEFAULT_PACKAGE_FOLDER;
+        const outputPath = packageFolder
+            ? `${path.replace(/\/$/, '')}/${packageFolder.replace(/^\//, '')}`
             : path;
 
         // Delete existing generated folder.

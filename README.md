@@ -30,7 +30,7 @@ Add the following script to your Codama configuration file.
 }
 ```
 
-The first argument is the output folder. The generated files will be written there.
+The first argument is the package folder — i.e. where the `package.json` lives. The generated files will be written to `src/generated` within that folder by default.
 
 An object can be passed as a second argument to further configure the renderer. See the [Options](#options) section below for more details.
 
@@ -38,15 +38,12 @@ An object can be passed as a second argument to further configure the renderer. 
 
 The `renderVisitor` accepts the following options.
 
-| Name                          | Type           | Default     | Description                                                               |
-| ----------------------------- | -------------- | ----------- | ------------------------------------------------------------------------- |
-| `deleteFolderBeforeRendering` | `boolean`      | `true`      | Whether the base directory should be cleaned before generating new files. |
-| `formatCode`                  | `boolean`      | `true`      | Whether we should use Oxfmt to format the generated code.                 |
-| `packageFolder`               | `string`       | `undefined` | Optional package folder appended to the output path when rendering.       |
-| `oxfmtOptions`                | `OxfmtOptions` | `{}`        | The options to use when formatting the code using Oxfmt.                  |
-| `extension`                   | `string`       | `'ts'`      | The file extension used for generated source files.                       |
-| `indexFilename`               | `string`       | `'index'`   | The base filename used for generated index files (before the extension).  |
-| `typeIndent`                  | `string`       | `'    '`    | The indentation string used when rendering multiline type fragments.      |
+| Name                          | Type           | Default           | Description                                                                                                                              |
+| ----------------------------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `deleteFolderBeforeRendering` | `boolean`      | `true`            | Whether the base directory should be cleaned before generating new files.                                                                |
+| `formatCode`                  | `boolean`      | `true`            | Whether we should use Oxfmt to format the generated code.                                                                                |
+| `packageFolder`               | `string`       | `'src/generated'` | The path to the generated folder relative to the package folder. Pass an empty string to write directly to the first argument.           |
+| `oxfmtOptions`                | `OxfmtOptions` | `{}`              | The options to use when formatting the code using Oxfmt.                                                                                 |
 
 ## Credits
 

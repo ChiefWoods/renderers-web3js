@@ -25,13 +25,12 @@ import { addFragmentImports, Fragment, fragment, mergeFragments } from '../utils
 
 export type TypeVisitor = ReturnType<typeof getTypeVisitor>;
 
-export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string } = {}) {
-    const typeIndent = input.typeIndent ?? '    ';
+export function getTypeVisitor(input: { stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
 
     // Keeps track of the indentation level.
     let indentLevel = 0;
-    const indent = () => typeIndent.repeat(indentLevel);
+    const indent = () => '    '.repeat(indentLevel);
     const shouldInline = (fragment: Fragment) => {
         if (fragment.content.includes('\n')) return false;
         return indent().length + fragment.content.length <= 100;
