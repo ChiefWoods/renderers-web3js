@@ -47,6 +47,7 @@ The `renderVisitor` accepts the following options.
 | `customAccountData`           | `CustomDataOptions[]` | `[]`            | The names of all `AccountNodes` whose data should be manually written in TypeScript.                                           |
 | `customInstructionData`       | `CustomDataOptions[]` | `[]`            | The names of all `InstructionNodes` whose data should be manually written in TypeScript.                                       |
 | `linkOverrides`               | `LinkOverrides`     | `{}`              | An object that overrides the import path of link nodes. For instance, `{ definedTypes: { counter: 'hooked' } }` uses the `hooked` folder to import any link node referring to the `counter` type. |
+| `internalNodes`               | `string[]`          | `[]`              | The names of all nodes that should be generated but not exported by the `index.ts` files.                                      |
 
 ## Credits
 

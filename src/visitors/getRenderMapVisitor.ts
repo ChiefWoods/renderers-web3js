@@ -42,6 +42,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         customAccountData,
         customInstructionData,
     );
+    const internalNodes = (options.internalNodes ?? []).map(camelCase);
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ getImportFrom, stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ getImportFrom, stack });
@@ -102,7 +103,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         const renderMaps = [
                             createRenderMap(
                                 `index.ts`,
-                                getProgramConstantsFragment({ ...node, definedTypes: allDefinedTypes }),
+                                getProgramConstantsFragment({ ...node, definedTypes: allDefinedTypes }, internalNodes),
                             ),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),
@@ -116,7 +117,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             renderMaps.push(
                                 createRenderMap(
                                     `types/index.ts`,
-                                    getTypesIndexFragment({ ...node, definedTypes: allDefinedTypes }),
+                                    getTypesIndexFragment({ ...node, definedTypes: allDefinedTypes }, internalNodes),
                                 ),
                             );
                         }

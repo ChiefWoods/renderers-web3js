@@ -1,13 +1,14 @@
-import { camelCase, ProgramNode } from '@codama/nodes';
+import { camelCase, CamelCaseString, ProgramNode } from '@codama/nodes';
 
 import { Fragment, fragment } from '../utils';
 
-export function getTypesIndexFragment(node: ProgramNode): Fragment {
-    if (node.definedTypes.length === 0) {
+export function getTypesIndexFragment(node: ProgramNode, internalNodes: CamelCaseString[] = []): Fragment {
+    const definedTypes = node.definedTypes.filter(type => !internalNodes.includes(type.name));
+    if (definedTypes.length === 0) {
         return fragment``;
     }
 
-    const exports = node.definedTypes.map(type => {
+    const exports = definedTypes.map(type => {
         return fragment`export * from './${camelCase(type.name)}';`;
     });
 

@@ -13,5 +13,6 @@ export type RenderOptions = RenderMapOptions & {
 export type RenderMapOptions = {
     customAccountData?: CustomDataOptions[];
     customInstructionData?: CustomDataOptions[];
+    internalNodes?: string[];
     linkOverrides?: LinkOverrides;
 };

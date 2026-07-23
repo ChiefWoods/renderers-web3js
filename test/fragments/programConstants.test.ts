@@ -1,7 +1,9 @@
 import {
+    accountNode,
     bytesTypeNode,
     bytesValueNode,
     constantNode,
+    instructionNode,
     numberTypeNode,
     numberValueNode,
     programNode,
@@ -9,6 +11,7 @@ import {
     publicKeyValueNode,
     stringTypeNode,
     stringValueNode,
+    structTypeNode,
 } from '@codama/nodes';
 import { expect, test } from 'vitest';
 
@@ -65,4 +68,18 @@ test('it decodes JSON-encoded anchor string constants', () => {
 
 test('getConstantExportName uppercases constant names', () => {
     expect(getConstantExportName('sEED')).toBe('SEED');
+});
+
+test('it omits internal nodes from barrel exports', () => {
+    const node = programNode({
+        accounts: [accountNode({ data: structTypeNode([]), name: 'hidden' })],
+        instructions: [instructionNode({ name: 'visible' })],
+        name: 'test',
+        publicKey: '11111111111111111111111111111111',
+    });
+
+    const result = getProgramConstantsFragment(node, ['hidden']);
+
+    expect(result.content).not.toContain("export * from './accounts/hidden'");
+    expect(result.content).toContain("export * from './instructions/visible'");
 });

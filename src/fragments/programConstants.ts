@@ -1,4 +1,4 @@
-import { camelCase, ConstantNode, isNode, ProgramNode, resolveNestedTypeNode, ValueNode } from '@codama/nodes';
+import { camelCase, CamelCaseString, ConstantNode, isNode, ProgramNode, resolveNestedTypeNode, ValueNode } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
 import {
@@ -12,7 +12,10 @@ import {
 } from '../utils';
 import { getValueVisitor, ValueVisitor } from '../visitors/getValueVisitor';
 
-export function getProgramConstantsFragment(node: ProgramNode): Fragment {
+export function getProgramConstantsFragment(
+    node: ProgramNode,
+    internalNodes: CamelCaseString[] = [],
+): Fragment {
     const fragments: Fragment[] = [];
 
     // 1. Program ID constant
@@ -31,7 +34,7 @@ export function getProgramConstantsFragment(node: ProgramNode): Fragment {
     }
 
     // 3. Export all from subdirectories
-    fragments.push(getExportsFragment(node));
+    fragments.push(getExportsFragment(node, internalNodes));
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments);
@@ -104,33 +107,34 @@ function normalizeStringConstantValue(value: string): string {
     return value;
 }
 
-function getExportsFragment(node: ProgramNode): Fragment {
+function getExportsFragment(node: ProgramNode, internalNodes: CamelCaseString[] = []): Fragment {
     const exports: string[] = [];
+    const isNotInternal = (name: CamelCaseString) => !internalNodes.includes(name);
 
     // Export all accounts
     if (node.accounts.length > 0) {
-        node.accounts.forEach(account => {
+        node.accounts.filter(account => isNotInternal(account.name)).forEach(account => {
             exports.push(`export * from './accounts/${camelCase(account.name)}';`);
         });
     }
 
     // Export all instructions
     if (node.instructions.length > 0) {
-        node.instructions.forEach(instruction => {
+        node.instructions.filter(instruction => isNotInternal(instruction.name)).forEach(instruction => {
             exports.push(`export * from './instructions/${camelCase(instruction.name)}';`);
         });
     }
 
     // Export all PDAs
     if (node.pdas.length > 0) {
-        node.pdas.forEach(pda => {
+        node.pdas.filter(pda => isNotInternal(pda.name)).forEach(pda => {
             exports.push(`export * from './pdas/${camelCase(pda.name)}';`);
         });
     }
 
     // Export all defined types
     if (node.definedTypes.length > 0) {
-        node.definedTypes.forEach(type => {
+        node.definedTypes.filter(type => isNotInternal(type.name)).forEach(type => {
             exports.push(`export * from './types/${camelCase(type.name)}';`);
         });
     }
