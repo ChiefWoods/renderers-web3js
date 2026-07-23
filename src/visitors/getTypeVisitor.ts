@@ -67,7 +67,7 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitBytesType() {
-                    return fragment`bytes`;
+                    return fragment`Uint8Array`;
                 },
 
                 visitDateTimeType(node, { self }) {
@@ -77,14 +77,22 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
 
                 visitDefinedType(node, { self }) {
                     const type = visit(node.type, self);
-                    return isNode(node.type, 'enumTypeNode') && isScalarEnum(node.type)
-                        ? fragment`enum ${pascalCase(node.name)} ${type}`
-                        : fragment`type ${pascalCase(node.name)} = ${type}`;
+                    if (isNode(node.type, 'enumTypeNode') && isScalarEnum(node.type)) {
+                        return fragment`export enum ${pascalCase(node.name)} ${type}`;
+                    }
+                    if (isNode(node.type, 'structTypeNode')) {
+                        return fragment`export interface ${pascalCase(node.name)} ${type}`;
+                    }
+                    return fragment`export type ${pascalCase(node.name)} = ${type}`;
                 },
 
                 visitDefinedTypeLink(node) {
                     const typeName = pascalCase(node.name);
-                    return addFragmentImports(fragment`${typeName}`, 'generatedTypes', typeName);
+                    return addFragmentImports(
+                        fragment`${typeName}`,
+                        `generatedTypes/${camelCase(node.name)}`,
+                        typeName,
+                    );
                 },
 
                 visitEnumEmptyVariantType(node) {
@@ -175,7 +183,7 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
 
                 visitInstruction(node, { self }) {
                     const definedTypeArguments = definedTypeNode({
-                        name: `${camelCase(node.name)}Instruction`,
+                        name: `${camelCase(node.name)}InstructionArgs`,
                         type: structTypeNodeFromInstructionArgumentNodes(node.arguments),
                     });
                     return visit(definedTypeArguments, self);
@@ -188,11 +196,15 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitNumberType(node) {
-                    return fragment`number /* ${node.format} */`;
+                    if (['u64', 'u128', 'i64', 'i128'].includes(node.format)) {
+                        return fragment`bigint`;
+                    }
+                    return fragment`number`;
                 },
 
                 visitOptionType(node, { self }) {
-                    return fragment`Option<${visit(node.item, self)}>`;
+                    const innerType = visit(node.item, self);
+                    return fragment`${innerType} | null`;
                 },
 
                 visitPostOffsetType(node, { self }) {
@@ -206,11 +218,12 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitPublicKeyType() {
-                    return fragment`Address`;
+                    return addFragmentImports(fragment`Address`, 'web3', 'Address');
                 },
 
                 visitRemainderOptionType(node, { self }) {
-                    return fragment`Option<${visit(node.item, self)}>`;
+                    const innerType = visit(node.item, self);
+                    return fragment`${innerType} | null`;
                 },
 
                 visitSentinelType(node, { self }) {
@@ -275,7 +288,8 @@ export function getTypeVisitor(input: { stack?: NodeStack; typeIndent?: string }
                 },
 
                 visitZeroableOptionType(node, { self }) {
-                    return fragment`Option<${visit(node.item, self)}>`;
+                    const innerType = visit(node.item, self);
+                    return fragment`${innerType} | null`;
                 },
             }),
         visitor => recordNodeStackVisitor(visitor, stack),

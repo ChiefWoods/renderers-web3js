@@ -23,7 +23,7 @@ import {
 } from '../fragments';
 import { extractPdasFromInstructions, RenderMapOptions } from '../utils';
 import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
-import { getTypeVisitor } from './getTypeVisitor-v2';
+import { getTypeVisitor } from './getTypeVisitor';
 
 export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const linkables = new LinkableDictionary();

@@ -20,7 +20,7 @@ This is a **Codama renderer** project that generates TypeScript client code for 
 ```
 src/
 ├── fragments/           # Code generation fragments
-│   ├── instructionFunction-v2.ts    # Main instruction generator
+│   ├── instructionFunction.ts       # Main instruction generator
 │   ├── accountType.ts               # Account type generator
 │   └── definedType.ts               # Custom type generator
 ├── visitors/            # AST visitors for type conversion
@@ -207,7 +207,7 @@ const data = buffer.subarray(0, schema.getSpan(buffer));
 
 ### Making Changes to Code Generation
 
-1. **Identify the fragment** you need to modify (e.g., `instructionFunction-v2.ts`)
+1. **Identify the fragment** you need to modify (e.g., `instructionFunction.ts`)
 2. **Update the fragment logic** carefully
 3. **Update corresponding tests** in `test/fragments/`
 4. **Run unit tests**: `bun run test:unit`
@@ -317,7 +317,7 @@ bun run test
 bun run test:unit
 
 # Run unit tests for specific file
-bun run test:unit -- test/fragments/instructionFunction-v2.test.ts
+bun run test:unit -- test/fragments/instructionFunction.test.ts
 
 # Run type checking
 bun run test:types
@@ -359,7 +359,7 @@ cd test/e2e/system && bun run test
 
 ### File to Edit for Common Tasks
 
-- **Change instruction generation** → `src/fragments/instructionFunction-v2.ts`
+- **Change instruction generation** → `src/fragments/instructionFunction.ts`
 - **Change account generation** → `src/fragments/accountType.ts`
 - **Change type mapping** → `src/visitors/getTypeVisitor.ts`
 - **Change Borsh schema** → `src/visitors/getBorshSchemaVisitor.ts`

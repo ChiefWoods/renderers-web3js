@@ -8,7 +8,7 @@ import {
 } from '@codama/nodes';
 import { expect, test } from 'vitest';
 
-import { getInstructionFunctionFragment } from '../../src/fragments/instructionFunction-v2';
+import { getInstructionFunctionFragment } from '../../src/fragments/instructionFunction';
 import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
 
 test('it generates instruction with accounts and args', () => {
