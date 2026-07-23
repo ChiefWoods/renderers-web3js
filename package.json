@@ -43,7 +43,7 @@
         }
     },
     "scripts": {
-        "build": "rimraf dist && tsup && tsc -p ./tsconfig.declarations.json",
+        "build": "rimraf dist && tsdown && tsc -p ./tsconfig.declarations.json",
         "dev": "vitest --project node",
         "lint": "oxlint",
         "lint:fix": "oxlint --fix",
@@ -79,7 +79,7 @@
         "oxlint": "^1.75.0",
         "oxlint-tsgolint": "^7.0.2001",
         "rimraf": "6.0.1",
-        "tsup": "^8.5.0",
+        "tsdown": "^0.22.13",
         "typescript": "^5.9.2",
         "vitest": "^3.2.4"
     },

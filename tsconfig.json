@@ -19,6 +19,6 @@
         "target": "ESNext"
     },
     "display": "renderers-web3js",
-    "include": ["src", "test", "tsup.config.ts"],
+    "include": ["src", "test"],
     "exclude": ["node_modules"]
 }
