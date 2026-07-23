@@ -3,7 +3,7 @@
     "before": [],
     "scripts": {
         "demo": {
-            "from": "@pratikbuilds/web3js-legacy",
+            "from": "renderers-web3js",
             "args": ["docs"]
         }
     }

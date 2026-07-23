@@ -18,7 +18,7 @@
         "strict": true,
         "target": "ESNext"
     },
-    "display": "@pratikbuilds/web3js-legacy",
+    "display": "renderers-web3js",
     "include": ["src", "test", "tsup.config.ts"],
     "exclude": ["node_modules"]
 }

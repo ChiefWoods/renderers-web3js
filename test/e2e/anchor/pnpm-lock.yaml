@@ -12,7 +12,7 @@ importers:
         specifier: ^1.5.1
         version: 1.5.1(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)
     devDependencies:
-      '@pratikbuilds/web3js-legacy':
+      'renderers-web3js':
         specifier: file:../../..
         version: file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
 
@@ -59,7 +59,7 @@ packages:
     resolution: {integrity: sha512-XlOlEbQcE9fmuXxrVTXCTlG2nlRXa9Rj3rr5Ue/+tX+nmkgbX720YHh0VR3hBF9xDvwnb8D2shVGOwNx+ulArw==, tarball: https://registry.npmjs.org/@noble/hashes/-/hashes-2.0.1.tgz}
     engines: {node: '>= 20.19.0'}
 
-  '@pratikbuilds/web3js-legacy@file:../../..':
+  'renderers-web3js@file:../../..':
     resolution: {directory: ../../.., type: directory}
     engines: {node: '>=20.18.0'}
 
@@ -537,7 +537,7 @@ snapshots:
 
   '@noble/hashes@2.0.1': {}
 
-  '@pratikbuilds/web3js-legacy@file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)':
+  'renderers-web3js@file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
       '@codama/errors': 1.8.0
       '@codama/nodes': 1.8.0

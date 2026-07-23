@@ -4,13 +4,13 @@
 [![npm-downloads][npm-downloads-image]][npm-url]
 [![license][license-image]][license-url]
 
-[npm-downloads-image]: https://img.shields.io/npm/dm/%40pratikbuilds%2Fweb3js-legacy.svg?style=flat
-[npm-image]: https://img.shields.io/npm/v/@pratikbuilds/web3js-legacy.svg?style=flat&label=%40pratikbuilds%2Fweb3js-legacy
-[npm-url]: https://www.npmjs.com/package/@pratikbuilds/web3js-legacy
-[license-image]: https://img.shields.io/npm/l/%40pratikbuilds%2Fweb3js-legacy?style=flat
-[license-url]: https://www.npmjs.com/package/@pratikbuilds/web3js-legacy
+[npm-downloads-image]: https://img.shields.io/npm/dm/renderers-web3js.svg?style=flat
+[npm-image]: https://img.shields.io/npm/v/renderers-web3js.svg?style=flat&label=renderers-web3js
+[npm-url]: https://www.npmjs.com/package/renderers-web3js
+[license-image]: https://img.shields.io/npm/l/renderers-web3js?style=flat
+[license-url]: https://www.npmjs.com/package/renderers-web3js
 
-`@pratikbuilds/web3js-legacy` is a Codama renderer for generating TypeScript
+`renderers-web3js` is a Codama renderer for generating TypeScript
 clients that use the classic `@solana/web3.js` APIs.
 
 It takes a Solana IDL and generates code for:
@@ -28,7 +28,7 @@ with `PublicKey`, `Connection`, `TransactionInstruction`, and the rest of
 ## Installation
 
 ```sh
-pnpm add @pratikbuilds/web3js-legacy
+pnpm add renderers-web3js
 pnpm add -D @codama/cli
 ```
 
@@ -43,7 +43,7 @@ Add the renderer to your `codama.json`.
     "idl": "idl.json",
     "scripts": {
         "web3js": {
-            "from": "@pratikbuilds/web3js-legacy",
+            "from": "renderers-web3js",
             "args": ["src/generated"]
         }
     }

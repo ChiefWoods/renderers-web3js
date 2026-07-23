@@ -9,6 +9,6 @@
         "test": "../../../node_modules/.bin/codama run demo"
     },
     "devDependencies": {
-        "@pratikbuilds/web3js-legacy": "file:../../.."
+        "renderers-web3js": "file:../../.."
     }
 }

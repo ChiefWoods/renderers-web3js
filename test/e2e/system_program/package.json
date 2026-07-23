@@ -1,5 +1,5 @@
 {
-    "name": "@pratikbuilds/web3js-legacy-e2e-system_program",
+    "name": "renderers-web3js-e2e-system_program",
     "private": true,
     "version": "0.0.0",
     "type": "commonjs",
@@ -9,6 +9,6 @@
         "test": "../../../node_modules/.bin/codama run demo"
     },
     "devDependencies": {
-        "@pratikbuilds/web3js-legacy": "file:../../.."
+        "renderers-web3js": "file:../../.."
     }
 }

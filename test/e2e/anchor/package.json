@@ -9,7 +9,7 @@
         "test": "../../../node_modules/.bin/codama run demo"
     },
     "devDependencies": {
-        "@pratikbuilds/web3js-legacy": "file:../../.."
+        "renderers-web3js": "file:../../.."
     },
     "dependencies": {
         "@codama/nodes-from-anchor": "^1.5.1"

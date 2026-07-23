@@ -8,7 +8,7 @@ importers:
 
   .:
     devDependencies:
-      '@pratikbuilds/web3js-legacy':
+      'renderers-web3js':
         specifier: file:../../..
         version: file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
 
@@ -42,7 +42,7 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
-  '@pratikbuilds/web3js-legacy@file:../../..':
+  'renderers-web3js@file:../../..':
     resolution: {directory: ../../.., type: directory}
     engines: {node: '>=20.18.0'}
 
@@ -425,7 +425,7 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
-  '@pratikbuilds/web3js-legacy@file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)':
+  'renderers-web3js@file:../../..(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)':
     dependencies:
       '@codama/errors': 1.5.0
       '@codama/nodes': 1.5.0

@@ -1,4 +1,4 @@
-# @pratikbuilds/web3js-legacy
+# renderers-web3js
 
 ## 0.1.3
 
