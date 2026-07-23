@@ -2,6 +2,7 @@ import { accountNode, numberTypeNode, publicKeyTypeNode, structFieldTypeNode, st
 import { expect, test } from 'vitest';
 
 import { getAccountTypeFragment } from '../../src/fragments/accountType';
+import { parseCustomDataOptions } from '../../src/utils';
 import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
 
 test('it generates account with struct data', () => {
@@ -136,4 +137,23 @@ test('it does not generate fetchProgramAccounts when no size or discriminator', 
     const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
 
     expect(result.content).not.toContain('fetchProgramAccounts');
+});
+
+test('it imports custom account data instead of generating codecs', () => {
+    const node = accountNode({
+        data: structTypeNode([structFieldTypeNode({ name: 'amount', type: numberTypeNode('u64') })]),
+        name: 'token',
+    });
+
+    const customAccountData = parseCustomDataOptions(['token'], 'AccountData');
+    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor(), customAccountData);
+
+    expect(result.content).toContain("import { TokenAccountData, TokenAccountDataCodec } from '../../hooked'");
+    expect(result.content).toContain('export type { TokenAccountData }');
+    expect(result.content).toContain('export { TokenAccountDataCodec }');
+    expect(result.content).not.toContain('export interface TokenAccountData');
+    expect(result.content).not.toContain('const TokenAccountDataCodec');
+    expect(result.content).toContain('data: TokenAccountData');
+    expect(result.content).toContain('return TokenAccountDataCodec.decode(data)');
+    expect(result.content).toContain('export async function fetchTokenAccount');
 });

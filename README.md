@@ -42,8 +42,9 @@ The `renderVisitor` accepts the following options.
 | ----------------------------- | -------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `deleteFolderBeforeRendering` | `boolean`      | `true`            | Whether the base directory should be cleaned before generating new files.                                                                |
 | `formatCode`                  | `boolean`      | `true`            | Whether we should use Oxfmt to format the generated code.                                                                                |
-| `packageFolder`               | `string`       | `'src/generated'` | The path to the generated folder relative to the package folder. Pass an empty string to write directly to the first argument.           |
-| `oxfmtOptions`                | `OxfmtOptions` | `{}`              | The options to use when formatting the code using Oxfmt.                                                                                 |
+| `packageFolder`               | `string`            | `'src/generated'` | The path to the generated folder relative to the package folder. Pass an empty string to write directly to the first argument. |
+| `oxfmtOptions`                | `OxfmtOptions`      | `{}`              | The options to use when formatting the code using Oxfmt.                                                                       |
+| `customAccountData`           | `CustomDataOptions[]` | `[]`            | The names of all `AccountNodes` whose data should be manually written in TypeScript.                                           |
 
 ## Credits
 

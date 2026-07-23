@@ -1,7 +1,14 @@
 import { AccountNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
+import {
+    addFragmentImports,
+    Fragment,
+    fragment,
+    getCodeFileFragment,
+    mergeFragments,
+    ParsedCustomDataOptions,
+} from '../utils';
 import { getGpaFiltersFromAccountNode } from '../utils/gpaFilters';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
@@ -9,20 +16,38 @@ export function getAccountTypeFragment(
     node: AccountNode,
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
+    customAccountData: ParsedCustomDataOptions = new Map(),
 ): Fragment {
+    const customData = customAccountData.get(node.name);
     const fragments: Fragment[] = [];
 
-    // 1. Generate AccountData interface
-    fragments.push(getAccountDataInterfaceFragment(node, typeVisitor));
+    if (customData) {
+        const dataTypeName = pascalCase(customData.importAs);
+        const schemaName = `${dataTypeName}Codec`;
 
-    // 2. Generate Account interface (address + data)
-    fragments.push(getAccountInterfaceFragment(node));
+        fragments.push(
+            addFragmentImports(
+                fragment`export type { ${dataTypeName} };
+export { ${schemaName} };`,
+                customData.importFrom,
+                [dataTypeName, schemaName],
+            ),
+        );
+        fragments.push(getAccountInterfaceFragment(node, dataTypeName));
+        fragments.push(getDeserializeAccountFragment(node, dataTypeName, schemaName, /* stripDiscriminators */ false));
+    } else {
+        // 1. Generate AccountData interface
+        fragments.push(getAccountDataInterfaceFragment(node, typeVisitor));
 
-    // 3. Generate Borsh schema for deserialization
-    fragments.push(getAccountSchemaFragment(node, borshSchemaVisitor));
+        // 2. Generate Account interface (address + data)
+        fragments.push(getAccountInterfaceFragment(node));
 
-    // 4. Generate deserialize function
-    fragments.push(getDeserializeAccountFragment(node));
+        // 3. Generate Borsh schema for deserialization
+        fragments.push(getAccountSchemaFragment(node, borshSchemaVisitor));
+
+        // 4. Generate deserialize function
+        fragments.push(getDeserializeAccountFragment(node));
+    }
 
     // 5. Generate fetch function
     fragments.push(getFetchAccountFragment(node));
@@ -69,15 +94,14 @@ function getAccountDataInterfaceFragment(node: AccountNode, typeVisitor: TypeVis
     return fragment`export interface ${interfaceName} ${dataType}`;
 }
 
-function getAccountInterfaceFragment(node: AccountNode): Fragment {
+function getAccountInterfaceFragment(node: AccountNode, dataTypeName = `${pascalCase(node.name)}AccountData`): Fragment {
     const name = pascalCase(node.name);
     const interfaceName = `${name}Account`;
-    const dataInterfaceName = `${name}AccountData`;
 
     return addFragmentImports(
         fragment`export interface ${interfaceName} {
     address: Address;
-    data: ${dataInterfaceName};
+    data: ${dataTypeName};
 }`,
         'web3',
         'Address',
@@ -97,18 +121,21 @@ function getAccountSchemaFragment(node: AccountNode, borshSchemaVisitor: BorshSc
     return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
 }
 
-function getDeserializeAccountFragment(node: AccountNode): Fragment {
+function getDeserializeAccountFragment(
+    node: AccountNode,
+    dataTypeName = `${pascalCase(node.name)}AccountData`,
+    schemaName = `${pascalCase(node.name)}AccountDataCodec`,
+    stripDiscriminators = true,
+): Fragment {
     const name = pascalCase(node.name);
     const functionName = `deserialize${name}Account`;
-    const dataTypeName = `${name}AccountData`;
-    const schemaName = `${name}AccountDataCodec`;
 
     // Check if account has discriminator fields
     const discriminatorNames = (node.discriminators || [])
         .filter(d => d.kind === 'fieldDiscriminatorNode')
         .map(d => d.name);
 
-    const hasDiscriminator = discriminatorNames.length > 0;
+    const hasDiscriminator = stripDiscriminators && discriminatorNames.length > 0;
 
     if (hasDiscriminator) {
         // Deserialize all fields, then filter out discriminators

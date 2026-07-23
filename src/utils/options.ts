@@ -1,3 +1,4 @@
+import type { CustomDataOptions } from './customData';
 import type { OxfmtOptions } from './formatCode';
 
 export type RenderOptions = RenderMapOptions & {
@@ -8,4 +9,6 @@ export type RenderOptions = RenderMapOptions & {
     packageFolder?: string;
 };
 
-export type RenderMapOptions = Record<string, never>;
+export type RenderMapOptions = {
+    customAccountData?: CustomDataOptions[];
+};

@@ -21,7 +21,7 @@ import {
     getProgramIdConstantName,
     getTypesIndexFragment,
 } from '../fragments';
-import { extractPdasFromInstructions, RenderMapOptions } from '../utils';
+import { extractPdasFromInstructions, getDefinedTypeNodesToExtract, parseCustomDataOptions, RenderMapOptions } from '../utils';
 import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
 import { getTypeVisitor } from './getTypeVisitor';
 
@@ -29,6 +29,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const linkables = new LinkableDictionary();
     const stack = new NodeStack();
 
+    const customAccountData = parseCustomDataOptions(options.customAccountData ?? [], 'AccountData');
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
@@ -43,7 +44,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitAccount(node) {
                     return createRenderMap(
                         `accounts/${camelCase(node.name)}.ts`,
-                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor),
+                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor, customAccountData),
                     );
                 },
 
@@ -79,19 +80,29 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                     try {
                         const extractedPdas = extractPdasFromInstructions(node.instructions);
                         const allPdas = [...node.pdas, ...extractedPdas];
+                        const extractedTypes = getDefinedTypeNodesToExtract(node.accounts, customAccountData);
+                        const allDefinedTypes = [...node.definedTypes, ...extractedTypes];
 
                         const renderMaps = [
-                            createRenderMap(`index.ts`, getProgramConstantsFragment(node)),
+                            createRenderMap(
+                                `index.ts`,
+                                getProgramConstantsFragment({ ...node, definedTypes: allDefinedTypes }),
+                            ),
                             ...node.accounts.map(n => visit(n, self)),
-                            ...node.definedTypes.map(n => visit(n, self)),
+                            ...allDefinedTypes.map(n => visit(n, self)),
                             ...node.instructions.map(n => visit(n, self)),
                             ...node.pdas.map(n => visit(n, self)),
                             ...allPdas.map(n => visit(n, self)),
                         ];
 
                         // Only create types index file if there are defined types
-                        if (node.definedTypes.length > 0) {
-                            renderMaps.push(createRenderMap(`types/index.ts`, getTypesIndexFragment(node)));
+                        if (allDefinedTypes.length > 0) {
+                            renderMaps.push(
+                                createRenderMap(
+                                    `types/index.ts`,
+                                    getTypesIndexFragment({ ...node, definedTypes: allDefinedTypes }),
+                                ),
+                            );
                         }
 
                         return mergeRenderMaps(renderMaps);
