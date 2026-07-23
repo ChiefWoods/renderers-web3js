@@ -191,12 +191,12 @@ const data = buffer.subarray(0, schema.getSpan(buffer));
 1. **Unit Tests** (`test/fragments/`, `test/visitors/`)
     - Test individual fragments and visitors
     - Fast feedback loop
-    - Run with: `pnpm run test:unit`
+    - Run with: `bun run test:unit`
 
 2. **Code Generation Tests** (`test/e2e/`)
     - Generate code from real IDLs
     - Verify output structure
-    - Run with: `cd test/e2e/system && pnpm test`
+    - Run with: `cd test/e2e/system && bun run test`
 
 3. **Integration Tests** (`test/generated/system.test.ts`)
     - Test generated code against real Solana devnet
@@ -210,9 +210,9 @@ const data = buffer.subarray(0, schema.getSpan(buffer));
 1. **Identify the fragment** you need to modify (e.g., `instructionFunction-v2.ts`)
 2. **Update the fragment logic** carefully
 3. **Update corresponding tests** in `test/fragments/`
-4. **Run unit tests**: `pnpm run test:unit`
-5. **Rebuild the project**: `pnpm build`
-6. **Regenerate test fixtures**: `cd test/e2e/system && pnpm test`
+4. **Run unit tests**: `bun run test:unit`
+5. **Rebuild the project**: `bun run build`
+6. **Regenerate test fixtures**: `cd test/e2e/system && bun run test`
 7. **Verify generated output** in `test/e2e/system/docs/`
 8. **Run integration tests** if possible
 
@@ -296,7 +296,7 @@ Don't mix them up!
 
 ## Build System
 
-**Build Command**: `pnpm build`
+**Build Command**: `bun run build`
 
 Outputs:
 
@@ -311,19 +311,19 @@ Outputs:
 
 ```bash
 # Run all tests
-pnpm test
+bun run test
 
 # Run only unit tests
-pnpm run test:unit
+bun run test:unit
 
 # Run unit tests for specific file
-pnpm run test:unit -- test/fragments/instructionFunction-v2.test.ts
+bun run test:unit -- test/fragments/instructionFunction-v2.test.ts
 
 # Run type checking
-pnpm run test:types
+bun run test:types
 
 # Regenerate e2e fixtures
-cd test/e2e/system && pnpm test
+cd test/e2e/system && bun run test
 ```
 
 ## Best Practices

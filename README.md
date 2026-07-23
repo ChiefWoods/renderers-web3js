@@ -28,8 +28,8 @@ with `PublicKey`, `Connection`, `TransactionInstruction`, and the rest of
 ## Installation
 
 ```sh
-pnpm add renderers-web3js
-pnpm add -D @codama/cli
+bun add renderers-web3js
+bun add -d @codama/cli
 ```
 
 Requires Node.js `>=20.18.0`.
@@ -53,7 +53,7 @@ Add the renderer to your `codama.json`.
 Run it:
 
 ```sh
-pnpm codama run web3js
+bunx codama run web3js
 ```
 
 The first argument is the output folder. In this example, generated files are
@@ -113,18 +113,18 @@ const nonce = await fetchNonceAccount(connection, nonceAddress);
 ## Development
 
 ```sh
-pnpm install
-pnpm build
-pnpm test
+bun install
+bun run build
+bun run test
 ```
 
 Useful focused commands:
 
 ```sh
-pnpm run test:unit
-pnpm run test:types
-pnpm run test:e2e
-pnpm run test:generated
+bun run test:unit
+bun run test:types
+bun run test:e2e
+bun run test:generated
 ```
 
 ## Contributing
@@ -136,8 +136,8 @@ For renderer changes, it is helpful to:
 
 - update the related unit tests
 - regenerate affected fixtures under `test/e2e`
-- run `pnpm build`
-- run the relevant tests, or `pnpm test`
+- run `bun run build`
+- run the relevant tests, or `bun run test`
 
 ## License
 
