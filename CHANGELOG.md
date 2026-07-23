@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.2.1
+
+### Patch Changes
+
+- Remove v1 web3js references
+
 ## 0.2.0
 
 ### Minor Changes
