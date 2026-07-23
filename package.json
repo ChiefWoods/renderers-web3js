@@ -56,7 +56,7 @@
         "test:generated": "vitest run test/generated/memo.test.ts test/generated/system.test.ts",
         "test:treeshakability": "for file in dist/index.*.mjs; do agadoo $file; done",
         "test:types": "tsc --noEmit -p ./tsconfig.typecheck.json",
-        "test:unit": "vitest run test/fragments/accountType.test.ts test/fragments/definedType.test.ts test/fragments/instructionFunction.test.ts test/fragments/pdaFunction.test.ts test/fragments/programConstants.test.ts test/utils/importMap.test.ts test/utils/linkOverrides.test.ts test/visitors/getTypeVisitor.test.ts test/visitors/getValueVisitor.test.ts"
+        "test:unit": "vitest run test/fragments/accountType.test.ts test/fragments/definedType.test.ts test/fragments/instructionFunction.test.ts test/fragments/pdaFunction.test.ts test/fragments/programConstants.test.ts test/utils/importMap.test.ts test/utils/linkOverrides.test.ts test/visitors/getTypeVisitor.test.ts test/visitors/getValueVisitor.test.ts test/visitors/renderParentInstructions.test.ts"
     },
     "dependencies": {
         "@codama/errors": "^1.8.0",

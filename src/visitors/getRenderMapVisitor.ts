@@ -1,4 +1,4 @@
-import { camelCase } from '@codama/nodes';
+import { camelCase, getAllInstructionsWithSubs } from '@codama/nodes';
 import { createRenderMap, mergeRenderMaps } from '@codama/renderers-core';
 import {
     extendVisitor,
@@ -43,6 +43,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         customInstructionData,
     );
     const internalNodes = (options.internalNodes ?? []).map(camelCase);
+    const renderParentInstructions = options.renderParentInstructions ?? false;
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ getImportFrom, stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ getImportFrom, stack });
@@ -92,22 +93,27 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitProgram(node, { self }) {
                     currentProgramIdConstant = getProgramIdConstantName(node.name);
                     try {
-                        const extractedPdas = extractPdasFromInstructions(node.instructions);
+                        const instructionsToRender = getAllInstructionsWithSubs(node, {
+                            leavesOnly: !renderParentInstructions,
+                        });
+                        const extractedPdas = extractPdasFromInstructions(instructionsToRender);
                         const allPdas = [...node.pdas, ...extractedPdas];
                         const extractedTypes = [
                             ...getDefinedTypeNodesToExtract(node.accounts, customAccountData),
-                            ...getDefinedTypeNodesToExtract(node.instructions, customInstructionData),
+                            ...getDefinedTypeNodesToExtract(instructionsToRender, customInstructionData),
                         ];
                         const allDefinedTypes = [...node.definedTypes, ...extractedTypes];
+                        const programForExports = {
+                            ...node,
+                            definedTypes: allDefinedTypes,
+                            instructions: instructionsToRender,
+                        };
 
                         const renderMaps = [
-                            createRenderMap(
-                                `index.ts`,
-                                getProgramConstantsFragment({ ...node, definedTypes: allDefinedTypes }, internalNodes),
-                            ),
+                            createRenderMap(`index.ts`, getProgramConstantsFragment(programForExports, internalNodes)),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),
-                            ...node.instructions.map(n => visit(n, self)),
+                            ...instructionsToRender.map(n => visit(n, self)),
                             ...node.pdas.map(n => visit(n, self)),
                             ...allPdas.map(n => visit(n, self)),
                         ];

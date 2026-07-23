@@ -15,4 +15,5 @@ export type RenderMapOptions = {
     customInstructionData?: CustomDataOptions[];
     internalNodes?: string[];
     linkOverrides?: LinkOverrides;
+    renderParentInstructions?: boolean;
 };
