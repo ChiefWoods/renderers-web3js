@@ -1,13 +1,14 @@
 import { camelCase, DefinedTypeNode, isDataEnum, isNode, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
-import { Fragment, fragment, getCodeFileFragment } from '../utils';
+import { Fragment, fragment, getCodeFileFragment, PathOverrides } from '../utils';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
 
 export function getDefinedTypeFragment(
     node: DefinedTypeNode,
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
+    dependencyMap: PathOverrides = {},
 ): Fragment {
     const fragments: Fragment[] = [];
 
@@ -33,7 +34,7 @@ export function getDefinedTypeFragment(
     }
 
     // Combine fragments and prepend imports
-    return getCodeFileFragment(fragments);
+    return getCodeFileFragment(fragments, dependencyMap);
 }
 
 function getTypeSchemaFragment(node: DefinedTypeNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment | undefined {

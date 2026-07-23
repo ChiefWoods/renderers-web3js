@@ -49,6 +49,7 @@ The `renderVisitor` accepts the following options.
 | `linkOverrides`               | `LinkOverrides`     | `{}`              | An object that overrides the import path of link nodes. For instance, `{ definedTypes: { counter: 'hooked' } }` uses the `hooked` folder to import any link node referring to the `counter` type. |
 | `internalNodes`               | `string[]`          | `[]`              | The names of all nodes that should be generated but not exported by the `index.ts` files.                                      |
 | `renderParentInstructions`    | `boolean`           | `false`           | When using nested instructions, whether the parent instructions should also be rendered. When set to `false` (default), only the instruction leaves are being rendered. |
+| `dependencyMap`               | `Record<string, string>` | `{}`         | A mapping between import aliases and their actual package name or path in TypeScript.                                          |
 
 ## Credits
 

@@ -9,7 +9,7 @@ import {
 } from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments, ParsedCustomDataOptions } from '../utils';
+import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments, ParsedCustomDataOptions, PathOverrides } from '../utils';
 import { BorshSchemaVisitor, getValueVisitor, TypeVisitor } from '../visitors';
 
 type CustomInstructionData = NonNullable<ReturnType<ParsedCustomDataOptions['get']>>;
@@ -94,6 +94,7 @@ export function getInstructionFunctionFragment(
     resolvedInputs: ResolvedInstructionInput[] = [],
     programIdConstant?: string,
     customInstructionData: ParsedCustomDataOptions = new Map(),
+    dependencyMap: PathOverrides = {},
 ): Fragment {
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
@@ -125,7 +126,7 @@ export function getInstructionFunctionFragment(
     );
 
     // Combine fragments and prepend imports
-    return getCodeFileFragment(fragments);
+    return getCodeFileFragment(fragments, dependencyMap);
 }
 
 function getAccountsInterfaceFragment(node: InstructionNode, resolvedInputs: ResolvedInstructionInput[]): Fragment {

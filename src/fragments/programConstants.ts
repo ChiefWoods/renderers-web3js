@@ -9,12 +9,14 @@ import {
     getJsDocFragment,
     getStringValueAsHexadecimals,
     mergeFragments,
+    PathOverrides,
 } from '../utils';
 import { getValueVisitor, ValueVisitor } from '../visitors/getValueVisitor';
 
 export function getProgramConstantsFragment(
     node: ProgramNode,
     internalNodes: CamelCaseString[] = [],
+    dependencyMap: PathOverrides = {},
 ): Fragment {
     const fragments: Fragment[] = [];
 
@@ -37,7 +39,7 @@ export function getProgramConstantsFragment(
     fragments.push(getExportsFragment(node, internalNodes));
 
     // Combine fragments and prepend imports
-    return getCodeFileFragment(fragments);
+    return getCodeFileFragment(fragments, dependencyMap);
 }
 
 export function getProgramIdConstantName(programName: string): string {

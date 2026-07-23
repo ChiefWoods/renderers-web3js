@@ -39,3 +39,11 @@ test('it handles single imports', () => {
 
     expect(statements).toEqual(["import { PublicKey } from '@solana/web3.js';"]);
 });
+
+test('it applies dependencyMap path overrides', () => {
+    const map = createImportMap([['web3', 'Address']]);
+
+    const statements = getImportStatements(map, { web3: '@solana/web3.js/legacy' });
+
+    expect(statements).toEqual(["import { Address } from '@solana/web3.js/legacy';"]);
+});

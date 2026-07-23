@@ -8,6 +8,7 @@ import {
     getCodeFileFragment,
     mergeFragments,
     ParsedCustomDataOptions,
+    PathOverrides,
 } from '../utils';
 import { getGpaFiltersFromAccountNode } from '../utils/gpaFilters';
 import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
@@ -17,6 +18,7 @@ export function getAccountTypeFragment(
     typeVisitor: TypeVisitor,
     borshSchemaVisitor: BorshSchemaVisitor,
     customAccountData: ParsedCustomDataOptions = new Map(),
+    dependencyMap: PathOverrides = {},
 ): Fragment {
     const customData = customAccountData.get(node.name);
     const fragments: Fragment[] = [];
@@ -61,7 +63,7 @@ export { ${schemaName} };`,
         fragments.push(gpaFragment);
     }
 
-    return getCodeFileFragment(fragments);
+    return getCodeFileFragment(fragments, dependencyMap);
 }
 
 function getAccountDataInterfaceFragment(node: AccountNode, typeVisitor: TypeVisitor): Fragment {

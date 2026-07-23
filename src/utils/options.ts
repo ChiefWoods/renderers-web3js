@@ -1,5 +1,6 @@
 import type { CustomDataOptions } from './customData';
 import type { OxfmtOptions } from './formatCode';
+import type { PathOverrides } from './importMap';
 import type { LinkOverrides } from './linkOverrides';
 
 export type RenderOptions = RenderMapOptions & {
@@ -13,6 +14,7 @@ export type RenderOptions = RenderMapOptions & {
 export type RenderMapOptions = {
     customAccountData?: CustomDataOptions[];
     customInstructionData?: CustomDataOptions[];
+    dependencyMap?: PathOverrides;
     internalNodes?: string[];
     linkOverrides?: LinkOverrides;
     renderParentInstructions?: boolean;

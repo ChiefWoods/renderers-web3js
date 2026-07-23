@@ -44,6 +44,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     );
     const internalNodes = (options.internalNodes ?? []).map(camelCase);
     const renderParentInstructions = options.renderParentInstructions ?? false;
+    const dependencyMap = options.dependencyMap ?? {};
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ getImportFrom, stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ getImportFrom, stack });
@@ -58,14 +59,20 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitAccount(node) {
                     return createRenderMap(
                         `accounts/${camelCase(node.name)}.ts`,
-                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor, customAccountData),
+                        getAccountTypeFragment(
+                            node,
+                            typeVisitor,
+                            borshSchemaVisitor,
+                            customAccountData,
+                            dependencyMap,
+                        ),
                     );
                 },
 
                 visitDefinedType(node) {
                     return createRenderMap(
                         `types/${camelCase(node.name)}.ts`,
-                        getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor),
+                        getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor, dependencyMap),
                     );
                 },
 
@@ -79,6 +86,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             visit(node, resolvedInstructionInputVisitor),
                             currentProgramIdConstant,
                             customInstructionData,
+                            dependencyMap,
                         ),
                     );
                 },
@@ -86,7 +94,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitPda(node) {
                     return createRenderMap(
                         `pdas/${camelCase(node.name)}.ts`,
-                        getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant),
+                        getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant, dependencyMap),
                     );
                 },
 
@@ -110,7 +118,10 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         };
 
                         const renderMaps = [
-                            createRenderMap(`index.ts`, getProgramConstantsFragment(programForExports, internalNodes)),
+                            createRenderMap(
+                                `index.ts`,
+                                getProgramConstantsFragment(programForExports, internalNodes, dependencyMap),
+                            ),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),
                             ...instructionsToRender.map(n => visit(n, self)),

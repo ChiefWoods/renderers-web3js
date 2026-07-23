@@ -8,10 +8,16 @@ import {
     fragment,
     getCodeFileFragment,
     mergeFragments,
+    PathOverrides,
 } from '../utils';
 import { TypeVisitor } from '../visitors';
 
-export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor, programIdConstant?: string): Fragment {
+export function getPdaFunctionFragment(
+    node: PdaNode,
+    typeVisitor: TypeVisitor,
+    programIdConstant?: string,
+    dependencyMap: PathOverrides = {},
+): Fragment {
     const fragments: Fragment[] = [];
 
     // Check if there are variable seeds (need an interface)
@@ -27,7 +33,7 @@ export function getPdaFunctionFragment(node: PdaNode, typeVisitor: TypeVisitor, 
     fragments.push(getPdaDerivationFunctionFragment(node, hasVariableSeeds, programIdConstant));
 
     // Combine fragments and prepend imports
-    return getCodeFileFragment(fragments);
+    return getCodeFileFragment(fragments, dependencyMap);
 }
 
 function getSeedsInterfaceFragment(node: PdaNode, typeVisitor: TypeVisitor): Fragment {
