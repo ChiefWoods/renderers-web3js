@@ -45,6 +45,7 @@ The `renderVisitor` accepts the following options.
 | `packageFolder`               | `string`            | `'src/generated'` | The path to the generated folder relative to the package folder. Pass an empty string to write directly to the first argument. |
 | `oxfmtOptions`                | `OxfmtOptions`      | `{}`              | The options to use when formatting the code using Oxfmt.                                                                       |
 | `customAccountData`           | `CustomDataOptions[]` | `[]`            | The names of all `AccountNodes` whose data should be manually written in TypeScript.                                           |
+| `customInstructionData`       | `CustomDataOptions[]` | `[]`            | The names of all `InstructionNodes` whose data should be manually written in TypeScript.                                       |
 
 ## Credits
 

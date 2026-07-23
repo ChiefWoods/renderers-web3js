@@ -30,6 +30,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const stack = new NodeStack();
 
     const customAccountData = parseCustomDataOptions(options.customAccountData ?? [], 'AccountData');
+    const customInstructionData = parseCustomDataOptions(options.customInstructionData ?? [], 'InstructionData');
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ stack });
     const borshSchemaVisitor = getBorshSchemaVisitor({ stack });
@@ -64,6 +65,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             borshSchemaVisitor,
                             visit(node, resolvedInstructionInputVisitor),
                             currentProgramIdConstant,
+                            customInstructionData,
                         ),
                     );
                 },
@@ -80,7 +82,10 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                     try {
                         const extractedPdas = extractPdasFromInstructions(node.instructions);
                         const allPdas = [...node.pdas, ...extractedPdas];
-                        const extractedTypes = getDefinedTypeNodesToExtract(node.accounts, customAccountData);
+                        const extractedTypes = [
+                            ...getDefinedTypeNodesToExtract(node.accounts, customAccountData),
+                            ...getDefinedTypeNodesToExtract(node.instructions, customInstructionData),
+                        ];
                         const allDefinedTypes = [...node.definedTypes, ...extractedTypes];
 
                         const renderMaps = [

@@ -9,6 +9,7 @@ import {
 import { expect, test } from 'vitest';
 
 import { getInstructionFunctionFragment } from '../../src/fragments/instructionFunction';
+import { parseCustomDataOptions } from '../../src/utils';
 import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
 
 test('it generates instruction with accounts and args', () => {
@@ -238,4 +239,30 @@ test('it skips remaining accounts when name matches existing instruction argumen
 
     // Should NOT generate keys.push for signers from remaining accounts (would duplicate)
     expect(result.content).not.toContain('keys.push(...(args.signers');
+});
+
+test('it imports custom instruction data instead of generating codecs', () => {
+    const node = instructionNode({
+        accounts: [instructionAccountNode({ isSigner: true, isWritable: false, name: 'authority' })],
+        arguments: [instructionArgumentNode({ name: 'amount', type: numberTypeNode('u64') })],
+        name: 'transfer',
+    });
+
+    const customInstructionData = parseCustomDataOptions(['transfer'], 'InstructionData');
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        [],
+        'DUMMYPRG_PROGRAM_ID',
+        customInstructionData,
+    );
+
+    expect(result.content).toContain(
+        "import { TransferInstructionData, TransferInstructionDataCodec } from '../../hooked'",
+    );
+    expect(result.content).toContain('export type TransferInstructionArgs = TransferInstructionData');
+    expect(result.content).not.toContain('export interface TransferInstructionArgs');
+    expect(result.content).not.toContain('const TransferInstructionDataCodec');
+    expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
 });

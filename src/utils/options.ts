@@ -11,4 +11,5 @@ export type RenderOptions = RenderMapOptions & {
 
 export type RenderMapOptions = {
     customAccountData?: CustomDataOptions[];
+    customInstructionData?: CustomDataOptions[];
 };

@@ -9,8 +9,10 @@ import {
 } from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments } from '../utils';
+import { addFragmentImports, Fragment, fragment, getCodeFileFragment, mergeFragments, ParsedCustomDataOptions } from '../utils';
 import { BorshSchemaVisitor, getValueVisitor, TypeVisitor } from '../visitors';
+
+type CustomInstructionData = NonNullable<ReturnType<ParsedCustomDataOptions['get']>>;
 
 function getUserArgs(node: InstructionNode) {
     return node.arguments.filter(arg => arg.defaultValueStrategy !== 'omitted');
@@ -91,9 +93,11 @@ export function getInstructionFunctionFragment(
     borshSchemaVisitor: BorshSchemaVisitor,
     resolvedInputs: ResolvedInstructionInput[] = [],
     programIdConstant?: string,
+    customInstructionData: ParsedCustomDataOptions = new Map(),
 ): Fragment {
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
+    const customData = customInstructionData.get(node.name);
 
     const fragments: Fragment[] = [];
 
@@ -104,17 +108,21 @@ export function getInstructionFunctionFragment(
 
     // 2. Generate Args interface (if there are arguments or remaining accounts)
     const hasRemainingAccountArgs = !!getRemainingAccountsArgsFragment(node)?.length;
-    if (hasArgs || hasRemainingAccountArgs) {
+    if (customData) {
+        fragments.push(getCustomArgsInterfaceFragment(node, customData));
+    } else if (hasArgs || hasRemainingAccountArgs) {
         fragments.push(getArgsInterfaceFragment(node, typeVisitor));
     }
 
-    // 3. Generate Borsh schema (if there are arguments)
-    if (hasArgs) {
+    // 3. Generate Borsh schema (if there are arguments and not custom)
+    if (hasArgs && !customData) {
         fragments.push(getInstructionSchemaFragment(node, borshSchemaVisitor));
     }
 
     // 4. Generate the instruction builder function
-    fragments.push(getInstructionBuilderFragment(node, hasAccounts, hasArgs, resolvedInputs, programIdConstant));
+    fragments.push(
+        getInstructionBuilderFragment(node, hasAccounts, hasArgs, resolvedInputs, programIdConstant, customData),
+    );
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments);
@@ -170,6 +178,37 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
     const fieldsContent = mergeFragments(allFields, cs => cs.map(c => `    ${c};`).join('\n'));
 
     return fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`;
+}
+
+function getCustomArgsInterfaceFragment(node: InstructionNode, customData: CustomInstructionData): Fragment {
+    const name = pascalCase(node.name);
+    const interfaceName = `${name}InstructionArgs`;
+    const dataTypeName = pascalCase(customData.importAs);
+    const codecName = `${dataTypeName}Codec`;
+    const remainingArgsFields = getRemainingAccountsArgsFragment(node);
+
+    const importFragment = addFragmentImports(
+        fragment`export type { ${dataTypeName} };
+export { ${codecName} };`,
+        customData.importFrom,
+        [dataTypeName, codecName],
+    );
+
+    if (!remainingArgsFields?.length) {
+        return mergeFragments(
+            [importFragment, fragment`export type ${interfaceName} = ${dataTypeName};`],
+            cs => cs.join('\n\n'),
+        );
+    }
+
+    const remainingFieldsContent = mergeFragments(remainingArgsFields, cs => cs.map(c => `    ${c};`).join('\n'));
+    return mergeFragments(
+        [
+            importFragment,
+            fragment`export type ${interfaceName} = ${dataTypeName} & {\n${remainingFieldsContent}\n};`,
+        ],
+        cs => cs.join('\n\n'),
+    );
 }
 
 function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | undefined {
@@ -335,16 +374,17 @@ function getInstructionBuilderFragment(
     hasArgs: boolean,
     resolvedInputs: ResolvedInstructionInput[],
     programIdConstant?: string,
+    customData?: CustomInstructionData,
 ): Fragment {
     const name = pascalCase(node.name);
     const functionName = `create${name}Instruction`;
     const accountsType = `${name}InstructionAccounts`;
     const argsType = `${name}InstructionArgs`;
-    const codecName = `${name}InstructionDataCodec`;
+    const codecName = customData ? `${pascalCase(customData.importAs)}Codec` : `${name}InstructionDataCodec`;
 
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);
-    const hasUserArgs = userArgs.length > 0;
+    const hasUserArgs = customData ? true : userArgs.length > 0;
     const hasRemainingAccountArgs = (node.remainingAccounts ?? []).some(
         remainingAccount =>
             isNode(remainingAccount.value, 'argumentValueNode') &&
@@ -386,7 +426,31 @@ function getInstructionBuilderFragment(
 
     // Generate data serialization
     let dataFragment: Fragment;
-    if (hasArgs) {
+    if (customData) {
+        const discriminatorArg = getDiscriminatorArg(node);
+        if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
+            const discriminatorHex = discriminatorArg.defaultValue.data;
+            dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+    const discriminator = Buffer.from('${discriminatorHex}', 'hex');
+    const data = Buffer.concat([discriminator, instructionData]);`;
+        } else if (
+            discriminatorArg &&
+            discriminatorArg.defaultValue?.kind === 'numberValueNode' &&
+            discriminatorArg.type.kind === 'numberTypeNode'
+        ) {
+            const discriminatorValue = visit(discriminatorArg.defaultValue, getValueVisitor());
+            const discriminatorFragment = getNumericDiscriminatorBufferFragment(
+                'discriminator',
+                discriminatorValue,
+                discriminatorArg.type,
+            );
+            dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+    ${discriminatorFragment}
+    const data = Buffer.concat([discriminator, instructionData]);`;
+        } else {
+            dataFragment = fragment`const data = Buffer.from(${codecName}.encode(args));`;
+        }
+    } else if (hasArgs) {
         // Get discriminator from omitted args
         const discriminatorArg = getDiscriminatorArg(node);
 
