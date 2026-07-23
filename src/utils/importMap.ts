@@ -55,7 +55,6 @@ export function getExternalDependencies(importMap: ImportMap): Set<string> {
 
 export function resolveImportMapPaths(importMap: ImportMap, pathOverrides: PathOverrides = {}): ImportMap {
     const DEFAULT_PATH_OVERRIDES: PathOverrides = {
-        'buffer-layout': '@solana/buffer-layout',
         codecs: '@solana/codecs',
         generatedAccounts: joinPath('..', 'accounts'),
         generatedHelpers: joinPath('..', 'helpers'),

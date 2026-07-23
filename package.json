@@ -63,7 +63,6 @@
         "@codama/nodes": "^1.8.0",
         "@codama/renderers-core": "^1.3.9",
         "@codama/visitors-core": "^1.8.0",
-        "@solana/buffer-layout": "^4.0.1",
         "@solana/codecs": "^3.0.3",
         "@solana/web3.js": "3.0.0-rc.2",
         "oxfmt": "^0.60.0",
