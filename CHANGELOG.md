@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.3.0
+
+### Minor Changes
+
+- Align the web3.js renderer closer to `@codama/renderers-js` and expand its configuration surface.
+
 ## 0.2.2
 
 ### Patch Changes
