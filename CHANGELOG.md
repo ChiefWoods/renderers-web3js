@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.2.0
+
+### Minor Changes
+
+- Migrate to web3.js@v3, replace tooling, add workspace, remove outdated Kit code
+
 ## 0.1.3
 
 ### Patch Changes
@@ -11,9 +17,9 @@
 ### Minor Changes
 
 - [`0644f7a`](https://github.com/pratikbuilds/renderers-js-web3js/commit/0644f7a2423abd336de6043a51ae343dbf676394) Thanks [@pratikbuilds](https://github.com/pratikbuilds)! - - Add `fetchAllMaybeXAccounts` and `fetchAllXAccounts` for batch account fetching
-    - Add tuple type support to Borsh schema generation
-    - Use Uint8Array instead of Buffer for bytes/codecs (browser compatible)
-    - Improve fetchAll type safety with filter + type guard
+  - Add tuple type support to Borsh schema generation
+  - Use Uint8Array instead of Buffer for bytes/codecs (browser compatible)
+  - Improve fetchAll type safety with filter + type guard
 
 ## 0.0.2
 
