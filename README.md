@@ -7,7 +7,7 @@
 [npm-image]: https://img.shields.io/npm/v/renderers-web3js.svg?style=flat&label=renderers-web3js
 [npm-url]: https://www.npmjs.com/package/renderers-web3js
 
-This package generates TypeScript clients from your Codama IDLs. The generated clients are compatible with [`@solana/web3.js`](https://github.com/solana-labs/solana-web3.js).
+This package generates TypeScript clients from your Codama IDLs. The generated clients are compatible with [`@solana/web3.js`](https://github.com/solana-foundation/solana-web3.js).
 
 ## Installation
 
