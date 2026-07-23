@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.2.2
+
+### Patch Changes
+
+- Update README.md
+
 ## 0.2.1
 
 ### Patch Changes
