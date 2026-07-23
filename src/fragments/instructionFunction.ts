@@ -1,5 +1,6 @@
 import {
     camelCase,
+    CamelCaseString,
     getAllInstructionArguments,
     InstructionNode,
     isNode,
@@ -16,6 +17,7 @@ import {
     fragment,
     getCodeFileFragment,
     getNameApi,
+    GetImportFromFunction,
     mergeFragments,
     NameApi,
     ParsedCustomDataOptions,
@@ -105,6 +107,8 @@ export function getInstructionFunctionFragment(
     customInstructionData: ParsedCustomDataOptions = new Map(),
     dependencyMap: PathOverrides = {},
     nameApi?: NameApi,
+    asyncResolvers: CamelCaseString[] = [],
+    getImportFrom?: GetImportFromFunction,
 ): Fragment {
     const names = nameApi ?? defaultNameApi;
     const hasAccounts = node.accounts.length > 0;
@@ -141,6 +145,8 @@ export function getInstructionFunctionFragment(
             programIdConstant,
             customData,
             names,
+            asyncResolvers,
+            getImportFrom,
         ),
     );
 
@@ -171,7 +177,8 @@ function getAccountsInterfaceFragment(
         const hasDerivableDefault =
             resolvedInput?.defaultValue?.kind === 'pdaValueNode' ||
             resolvedInput?.defaultValue?.kind === 'programIdValueNode' ||
-            resolvedInput?.defaultValue?.kind === 'accountValueNode';
+            resolvedInput?.defaultValue?.kind === 'accountValueNode' ||
+            resolvedInput?.defaultValue?.kind === 'resolverValueNode';
         const optional = account.isOptional || hasDerivableDefault ? '?' : '';
         const isSigner = account.isSigner === 'either' ? 'Address | Keypair' : 'Address';
 
@@ -408,6 +415,8 @@ function getInstructionBuilderFragment(
     programIdConstant?: string,
     customData?: CustomInstructionData,
     nameApi: NameApi = defaultNameApi,
+    asyncResolvers: CamelCaseString[] = [],
+    getImportFrom?: GetImportFromFunction,
 ): Fragment {
     const functionName = nameApi.instructionCreateFunction(node.name);
     const accountsType = nameApi.instructionAccountsType(node.name);
@@ -442,12 +451,19 @@ function getInstructionBuilderFragment(
 
     const paramsStr = params.join(', ');
 
-    const hasPdaDefaults = resolvedInputs.some(input => input.defaultValue?.kind === 'pdaValueNode');
+    const hasAsyncDefaults = resolvedInputs.some(input => {
+        if (!input.defaultValue) return false;
+        if (input.defaultValue.kind === 'pdaValueNode') return true;
+        if (input.defaultValue.kind === 'resolverValueNode') {
+            return asyncResolvers.includes(input.defaultValue.name);
+        }
+        return false;
+    });
 
     const defaultFragments: Fragment[] = [];
     resolvedInputs.forEach(input => {
         if (input.defaultValue) {
-            const defaultFragment = getInputDefaultFragment(input, node);
+            const defaultFragment = getInputDefaultFragment(input, node, asyncResolvers, getImportFrom);
             if (defaultFragment.content) {
                 defaultFragments.push(defaultFragment);
             }
@@ -582,7 +598,7 @@ function getInstructionBuilderFragment(
     const functionBody = mergeFragments(bodyParts, cs => cs.join('\n    '));
 
     // Build the complete function by merging function signature with body
-    const functionSignature = hasPdaDefaults
+    const functionSignature = hasAsyncDefaults
         ? fragment`export async function ${functionName}(${paramsStr}): Promise<TransactionInstruction> {`
         : fragment`export function ${functionName}(${paramsStr}): TransactionInstruction {`;
     const functionClosing = fragment`}`;
@@ -619,7 +635,12 @@ function getInstructionBuilderFragment(
  * This handles PDA derivation, program ID defaults, etc.
  * Similar to getInstructionInputDefaultFragment in kit-based codebase.
  */
-function getInputDefaultFragment(input: ResolvedInstructionInput, node: InstructionNode): Fragment {
+function getInputDefaultFragment(
+    input: ResolvedInstructionInput,
+    node: InstructionNode,
+    asyncResolvers: CamelCaseString[] = [],
+    getImportFrom?: GetImportFromFunction,
+): Fragment {
     const { defaultValue } = input;
 
     if (!defaultValue) {
@@ -713,7 +734,30 @@ function getInputDefaultFragment(input: ResolvedInstructionInput, node: Instruct
             return defaultFragment(`args.${argRef}`);
         }
 
-        // Add other cases as needed
+        case 'resolverValueNode': {
+            const resolverName = camelCase(defaultValue.name);
+            const importFrom = getImportFrom?.(defaultValue) ?? 'hooked';
+            const isAsync = asyncResolvers.includes(defaultValue.name);
+            const call = isAsync ? `await ${resolverName}()` : `${resolverName}()`;
+
+            if (input.kind === 'instructionAccountNode') {
+                return addFragmentImports(
+                    fragment`let ${inputName} = accounts.${inputName};
+    if (!${inputName}) {
+        ${inputName} = ${call};
+    }`,
+                    importFrom,
+                    resolverName,
+                );
+            }
+
+            return addFragmentImports(
+                fragment`const ${inputName} = args.${inputName} ?? ${call};`,
+                importFrom,
+                resolverName,
+            );
+        }
+
         default:
             return fragment``;
     }

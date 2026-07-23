@@ -13,6 +13,7 @@ export type RenderOptions = RenderMapOptions & {
 };
 
 export type RenderMapOptions = {
+    asyncResolvers?: string[];
     customAccountData?: CustomDataOptions[];
     customInstructionData?: CustomDataOptions[];
     dependencyMap?: PathOverrides;

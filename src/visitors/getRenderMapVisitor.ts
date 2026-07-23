@@ -45,6 +45,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
         customInstructionData,
     );
     const nameApi = getNameApi({ ...DEFAULT_NAME_TRANSFORMERS, ...options.nameTransformers });
+    const asyncResolvers = (options.asyncResolvers ?? []).map(camelCase);
     const internalNodes = (options.internalNodes ?? []).map(camelCase);
     const renderParentInstructions = options.renderParentInstructions ?? false;
     const dependencyMap = options.dependencyMap ?? {};
@@ -91,6 +92,8 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             customInstructionData,
                             dependencyMap,
                             nameApi,
+                            asyncResolvers,
+                            getImportFrom,
                         ),
                     );
                 },
