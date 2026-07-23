@@ -31,21 +31,6 @@
         "vitest": "^3.2.4",
       },
     },
-    "test/e2e/anchor": {
-      "name": "@renderers-web3js/e2e-anchor",
-      "version": "0.0.0",
-      "dependencies": {
-        "@codama/nodes-from-anchor": "^1.5.1",
-      },
-    },
-    "test/e2e/memo": {
-      "name": "@renderers-web3js/e2e-memo",
-      "version": "0.0.0",
-    },
-    "test/e2e/system_program": {
-      "name": "@renderers-web3js/e2e-system-program",
-      "version": "0.0.0",
-    },
   },
   "packages": {
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
@@ -277,12 +262,6 @@
     "@oxlint/binding-win32-x64-msvc": ["@oxlint/binding-win32-x64-msvc@1.75.0", "", { "os": "win32", "cpu": "x64" }, "sha512-DSxnNkBUAYARPwJtR12Ig3deWr8w0H997xP6jy33i+e0SyYJw8FKuz4+cZtpmPEhQmvlPJE3X/2vNxDmLkd/rA=="],
 
     "@quansync/fs": ["@quansync/fs@1.0.0", "", { "dependencies": { "quansync": "^1.0.0" } }, "sha512-4TJ3DFtlf1L5LDMaM6CanJ/0lckGNtJcMjQ1NAV6zDmA0tEHKZtxNKin8EgPaVX1YzljbxckyT2tJrpQKAtngQ=="],
-
-    "@renderers-web3js/e2e-anchor": ["@renderers-web3js/e2e-anchor@workspace:test/e2e/anchor"],
-
-    "@renderers-web3js/e2e-memo": ["@renderers-web3js/e2e-memo@workspace:test/e2e/memo"],
-
-    "@renderers-web3js/e2e-system-program": ["@renderers-web3js/e2e-system-program@workspace:test/e2e/system_program"],
 
     "@rolldown/binding-android-arm64": ["@rolldown/binding-android-arm64@1.2.0", "", { "os": "android", "cpu": "arm64" }, "sha512-9yB1l95IrJuNGDFdOYe79vdApdz6WWBCObE+rQ2LUliYUlcyFwSYIb2xb5/Ifw7dAtMy2ZqNyd8QTSOc7duAKw=="],
 
