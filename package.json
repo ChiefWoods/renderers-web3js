@@ -59,10 +59,10 @@
         "test:unit": "vitest run test/fragments/accountType.test.ts test/fragments/definedType.test.ts test/fragments/instructionFunction.test.ts test/fragments/pdaFunction.test.ts test/fragments/programConstants.test.ts test/utils/importMap.test.ts test/utils/linkOverrides.test.ts test/utils/nameTransformers.test.ts test/utils/packageJson.test.ts test/visitors/getTypeVisitor.test.ts test/visitors/getValueVisitor.test.ts test/visitors/renderParentInstructions.test.ts"
     },
     "dependencies": {
-        "@codama/errors": "^1.8.0",
-        "@codama/nodes": "^1.8.0",
-        "@codama/renderers-core": "^1.3.9",
-        "@codama/visitors-core": "^1.8.0",
+        "@codama/errors": "^1.9.0",
+        "@codama/nodes": "^1.9.0",
+        "@codama/renderers-core": "^1.3.10",
+        "@codama/visitors-core": "^1.9.0",
         "@solana/codecs": "^3.0.3",
         "@solana/web3.js": "3.0.0-rc.2",
         "oxfmt": "^0.60.0",
@@ -71,8 +71,8 @@
     "devDependencies": {
         "@changesets/changelog-github": "^0.5.1",
         "@changesets/cli": "^2.29.7",
-        "@codama/cli": "^1.3.5",
-        "@codama/nodes-from-anchor": "^1.5.1",
+        "@codama/cli": "^1.5.4",
+        "@codama/nodes-from-anchor": "^1.5.2",
         "@solana-config/oxc": "^0.1.1",
         "@types/node": "^24",
         "@types/semver": "^7.7.1",
