@@ -1,5 +1,5 @@
 {
-    "name": "@pratikbuilds/web3js-legacy",
+    "name": "renderers-web3js",
     "version": "0.1.3",
     "description": "Codama renderer for Web3.js",
     "exports": {
@@ -76,10 +76,10 @@
     "license": "MIT",
     "repository": {
         "type": "git",
-        "url": "https://github.com/pratikbuilds/renderers-js-web3js"
+        "url": "https://github.com/ChiefWoods/renderers-web3js"
     },
     "bugs": {
-        "url": "http://github.com/pratikbuilds/renderers-js-web3js/issues"
+        "url": "http://github.com/ChiefWoods/renderers-web3js/issues"
     },
     "browserslist": [
         "supports bigint and not dead",
