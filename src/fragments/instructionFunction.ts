@@ -234,18 +234,14 @@ export { ${codecName} };`,
     );
 
     if (!remainingArgsFields?.length) {
-        return mergeFragments(
-            [importFragment, fragment`export type ${interfaceName} = ${dataTypeName};`],
-            cs => cs.join('\n\n'),
+        return mergeFragments([importFragment, fragment`export type ${interfaceName} = ${dataTypeName};`], cs =>
+            cs.join('\n\n'),
         );
     }
 
     const remainingFieldsContent = mergeFragments(remainingArgsFields, cs => cs.map(c => `    ${c};`).join('\n'));
     return mergeFragments(
-        [
-            importFragment,
-            fragment`export type ${interfaceName} = ${dataTypeName} & {\n${remainingFieldsContent}\n};`,
-        ],
+        [importFragment, fragment`export type ${interfaceName} = ${dataTypeName} & {\n${remainingFieldsContent}\n};`],
         cs => cs.join('\n\n'),
     );
 }
@@ -425,9 +421,7 @@ function getInstructionBuilderFragment(
     const functionName = nameApi.instructionCreateFunction(node.name);
     const accountsType = nameApi.instructionAccountsType(node.name);
     const argsType = nameApi.instructionArgsType(node.name);
-    const codecName = customData
-        ? `${pascalCase(customData.importAs)}Codec`
-        : nameApi.instructionDataCodec(node.name);
+    const codecName = customData ? `${pascalCase(customData.importAs)}Codec` : nameApi.instructionDataCodec(node.name);
 
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);

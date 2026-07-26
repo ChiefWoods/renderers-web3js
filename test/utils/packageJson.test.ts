@@ -1,7 +1,11 @@
 import { expect, test } from 'vitest';
 
 import { createImportMap } from '../../src/utils/importMap';
-import { createNewPackageJson, getUsedDependencyVersions, updateExistingPackageJson } from '../../src/utils/packageJson';
+import {
+    createNewPackageJson,
+    getUsedDependencyVersions,
+    updateExistingPackageJson,
+} from '../../src/utils/packageJson';
 
 test('it creates a package.json with used dependencies', () => {
     const packageJson = createNewPackageJson({

@@ -39,11 +39,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
 
     const customAccountData = parseCustomDataOptions(options.customAccountData ?? [], 'AccountData');
     const customInstructionData = parseCustomDataOptions(options.customInstructionData ?? [], 'InstructionData');
-    const getImportFrom = getImportFromFactory(
-        options.linkOverrides ?? {},
-        customAccountData,
-        customInstructionData,
-    );
+    const getImportFrom = getImportFromFactory(options.linkOverrides ?? {}, customAccountData, customInstructionData);
     const nameApi = getNameApi({ ...DEFAULT_NAME_TRANSFORMERS, ...options.nameTransformers });
     const asyncResolvers = (options.asyncResolvers ?? []).map(camelCase);
     const nonScalarEnums = (options.nonScalarEnums ?? []).map(camelCase);
@@ -64,13 +60,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitAccount(node) {
                     return createRenderMap(
                         `accounts/${camelCase(node.name)}.ts`,
-                        getAccountTypeFragment(
-                            node,
-                            typeVisitor,
-                            borshSchemaVisitor,
-                            customAccountData,
-                            dependencyMap,
-                        ),
+                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor, customAccountData, dependencyMap),
                     );
                 },
 

@@ -1,4 +1,12 @@
-import { camelCase, CamelCaseString, ConstantNode, isNode, ProgramNode, resolveNestedTypeNode, ValueNode } from '@codama/nodes';
+import {
+    camelCase,
+    CamelCaseString,
+    ConstantNode,
+    isNode,
+    ProgramNode,
+    resolveNestedTypeNode,
+    ValueNode,
+} from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
 import {
@@ -47,7 +55,10 @@ export function getProgramConstantsFragment(
     return getCodeFileFragment(fragments, dependencyMap);
 }
 
-export function getProgramIdConstantName(programName: string, nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS)): string {
+export function getProgramIdConstantName(
+    programName: string,
+    nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS),
+): string {
     return nameApi.programAddressConstant(programName);
 }
 
@@ -120,30 +131,38 @@ function getExportsFragment(node: ProgramNode, internalNodes: CamelCaseString[] 
 
     // Export all accounts
     if (node.accounts.length > 0) {
-        node.accounts.filter(account => isNotInternal(account.name)).forEach(account => {
-            exports.push(`export * from './accounts/${camelCase(account.name)}';`);
-        });
+        node.accounts
+            .filter(account => isNotInternal(account.name))
+            .forEach(account => {
+                exports.push(`export * from './accounts/${camelCase(account.name)}';`);
+            });
     }
 
     // Export all instructions
     if (node.instructions.length > 0) {
-        node.instructions.filter(instruction => isNotInternal(instruction.name)).forEach(instruction => {
-            exports.push(`export * from './instructions/${camelCase(instruction.name)}';`);
-        });
+        node.instructions
+            .filter(instruction => isNotInternal(instruction.name))
+            .forEach(instruction => {
+                exports.push(`export * from './instructions/${camelCase(instruction.name)}';`);
+            });
     }
 
     // Export all PDAs
     if (node.pdas.length > 0) {
-        node.pdas.filter(pda => isNotInternal(pda.name)).forEach(pda => {
-            exports.push(`export * from './pdas/${camelCase(pda.name)}';`);
-        });
+        node.pdas
+            .filter(pda => isNotInternal(pda.name))
+            .forEach(pda => {
+                exports.push(`export * from './pdas/${camelCase(pda.name)}';`);
+            });
     }
 
     // Export all defined types
     if (node.definedTypes.length > 0) {
-        node.definedTypes.filter(type => isNotInternal(type.name)).forEach(type => {
-            exports.push(`export * from './types/${camelCase(type.name)}';`);
-        });
+        node.definedTypes
+            .filter(type => isNotInternal(type.name))
+            .forEach(type => {
+                exports.push(`export * from './types/${camelCase(type.name)}';`);
+            });
     }
 
     return fragment`${exports.join('\n')}`;

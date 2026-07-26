@@ -1,7 +1,13 @@
 import { camelCase, CamelCaseString, pascalCase, REGISTERED_VALUE_NODE_KINDS } from '@codama/nodes';
 import { extendVisitor, NodeStack, pipe, recordNodeStackVisitor, staticVisitor, visit } from '@codama/visitors-core';
 
-import { addFragmentImports, fragment, GetImportFromFunction, getStringValueAsHexadecimals, mergeFragments } from '../utils';
+import {
+    addFragmentImports,
+    fragment,
+    GetImportFromFunction,
+    getStringValueAsHexadecimals,
+    mergeFragments,
+} from '../utils';
 
 export type ValueVisitor = ReturnType<typeof getValueVisitor>;
 

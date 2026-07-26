@@ -96,7 +96,10 @@ function getAccountDataInterfaceFragment(node: AccountNode, typeVisitor: TypeVis
     return fragment`export interface ${interfaceName} ${dataType}`;
 }
 
-function getAccountInterfaceFragment(node: AccountNode, dataTypeName = `${pascalCase(node.name)}AccountData`): Fragment {
+function getAccountInterfaceFragment(
+    node: AccountNode,
+    dataTypeName = `${pascalCase(node.name)}AccountData`,
+): Fragment {
     const name = pascalCase(node.name);
     const interfaceName = `${name}Account`;
 

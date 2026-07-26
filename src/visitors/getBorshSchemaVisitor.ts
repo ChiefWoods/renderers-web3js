@@ -21,7 +21,8 @@ function getNumberCodec(format: string, endian: 'be' | 'le') {
 export function getBorshSchemaVisitor(input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
     const getImportFrom =
-        input.getImportFrom ?? ((node: { kind: string }) => (node.kind === 'definedTypeLinkNode' ? 'generatedTypes' : 'generatedTypes'));
+        input.getImportFrom ??
+        ((node: { kind: string }) => (node.kind === 'definedTypeLinkNode' ? 'generatedTypes' : 'generatedTypes'));
 
     return pipe(
         staticVisitor(() => fragment``, {

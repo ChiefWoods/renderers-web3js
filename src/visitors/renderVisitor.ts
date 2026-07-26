@@ -9,9 +9,7 @@ export const DEFAULT_PACKAGE_FOLDER = 'src/generated';
 export function renderVisitor(path: string, options: RenderOptions = {}) {
     return rootNodeVisitor(async root => {
         const packageFolder = options.packageFolder ?? DEFAULT_PACKAGE_FOLDER;
-        const outputPath = packageFolder
-            ? `${path.replace(/\/$/, '')}/${packageFolder.replace(/^\//, '')}`
-            : path;
+        const outputPath = packageFolder ? `${path.replace(/\/$/, '')}/${packageFolder.replace(/^\//, '')}` : path;
 
         // Delete existing generated folder.
         if (options.deleteFolderBeforeRendering ?? true) {

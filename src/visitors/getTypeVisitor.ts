@@ -21,13 +21,18 @@ import {
     visit,
 } from '@codama/visitors-core';
 
-import { addFragmentImports, Fragment, fragment, getLinkImportPath, GetImportFromFunction, mergeFragments } from '../utils';
+import {
+    addFragmentImports,
+    Fragment,
+    fragment,
+    getLinkImportPath,
+    GetImportFromFunction,
+    mergeFragments,
+} from '../utils';
 
 export type TypeVisitor = ReturnType<typeof getTypeVisitor>;
 
-export function getTypeVisitor(
-    input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {},
-) {
+export function getTypeVisitor(input: { getImportFrom?: GetImportFromFunction; stack?: NodeStack } = {}) {
     const stack = input.stack ?? new NodeStack();
     const getImportFrom =
         input.getImportFrom ??
