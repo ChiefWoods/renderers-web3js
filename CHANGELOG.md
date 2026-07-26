@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.3.1
+
+### Patch Changes
+
+- Fix seed name mismatch due to shared helpers
+
 ## 0.3.0
 
 ### Minor Changes
