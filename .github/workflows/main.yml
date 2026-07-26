@@ -76,6 +76,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write # Required for npm trusted publishing (OIDC)
     outputs:
       published: ${{ steps.changesets.outputs.published }}
     steps:
@@ -92,6 +93,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false # never use caching in release builds
 
       - name: Install Dependencies
         run: bun install --frozen-lockfile
@@ -105,7 +107,6 @@ jobs:
           publish: bun run publish-package
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   dependabot:
     runs-on: ubuntu-latest
