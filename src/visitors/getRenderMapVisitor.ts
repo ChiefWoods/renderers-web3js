@@ -114,6 +114,8 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         });
                         const extractedPdas = extractPdasFromInstructions(instructionsToRender);
                         const allPdas = [...node.pdas, ...extractedPdas];
+                        // Last write wins — matches PDA file generation order (extracted overwrites program PDAs).
+                        const pdaNodes = new Map(allPdas.map(pda => [String(pda.name), pda]));
                         const extractedTypes = [
                             ...getDefinedTypeNodesToExtract(node.accounts, customAccountData),
                             ...getDefinedTypeNodesToExtract(instructionsToRender, customInstructionData),
@@ -138,7 +140,24 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             ),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),
-                            ...instructionsToRender.map(n => visit(n, self)),
+                            ...instructionsToRender.map(n =>
+                                createRenderMap(
+                                    `instructions/${camelCase(n.name)}.ts`,
+                                    getInstructionFunctionFragment(
+                                        n,
+                                        typeVisitor,
+                                        borshSchemaVisitor,
+                                        visit(n, resolvedInstructionInputVisitor),
+                                        currentProgramIdConstant,
+                                        customInstructionData,
+                                        dependencyMap,
+                                        nameApi,
+                                        asyncResolvers,
+                                        getImportFrom,
+                                        pdaNodes,
+                                    ),
+                                ),
+                            ),
                             ...node.pdas.map(n => visit(n, self)),
                             ...allPdas.map(n => visit(n, self)),
                         ];

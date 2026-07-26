@@ -6,6 +6,7 @@ import {
     isNode,
     NumberTypeNode,
     pascalCase,
+    PdaNode,
     structTypeNodeFromInstructionArgumentNodes,
 } from '@codama/nodes';
 import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
@@ -109,6 +110,7 @@ export function getInstructionFunctionFragment(
     nameApi?: NameApi,
     asyncResolvers: CamelCaseString[] = [],
     getImportFrom?: GetImportFromFunction,
+    pdaNodes: ReadonlyMap<string, PdaNode> = new Map(),
 ): Fragment {
     const names = nameApi ?? defaultNameApi;
     const hasAccounts = node.accounts.length > 0;
@@ -147,6 +149,7 @@ export function getInstructionFunctionFragment(
             names,
             asyncResolvers,
             getImportFrom,
+            pdaNodes,
         ),
     );
 
@@ -417,6 +420,7 @@ function getInstructionBuilderFragment(
     nameApi: NameApi = defaultNameApi,
     asyncResolvers: CamelCaseString[] = [],
     getImportFrom?: GetImportFromFunction,
+    pdaNodes: ReadonlyMap<string, PdaNode> = new Map(),
 ): Fragment {
     const functionName = nameApi.instructionCreateFunction(node.name);
     const accountsType = nameApi.instructionAccountsType(node.name);
@@ -463,7 +467,7 @@ function getInstructionBuilderFragment(
     const defaultFragments: Fragment[] = [];
     resolvedInputs.forEach(input => {
         if (input.defaultValue) {
-            const defaultFragment = getInputDefaultFragment(input, node, asyncResolvers, getImportFrom);
+            const defaultFragment = getInputDefaultFragment(input, node, asyncResolvers, getImportFrom, pdaNodes);
             if (defaultFragment.content) {
                 defaultFragments.push(defaultFragment);
             }
@@ -640,6 +644,7 @@ function getInputDefaultFragment(
     node: InstructionNode,
     asyncResolvers: CamelCaseString[] = [],
     getImportFrom?: GetImportFromFunction,
+    pdaNodes: ReadonlyMap<string, PdaNode> = new Map(),
 ): Fragment {
     const { defaultValue } = input;
 
@@ -664,24 +669,21 @@ function getInputDefaultFragment(
             const pdaFunctionName = `find${pascalCase(defaultValue.pda.name)}Pda`;
             const pdaFileName = camelCase(defaultValue.pda.name);
 
-            // Build seeds object from defaultValue.seeds
+            // Build seeds object from defaultValue.seeds.
+            // Keys must match the shared PDA helper's seed interface. When the same
+            // PDA is inlined across instructions with different seed *names*, map
+            // values by position onto the canonical PDA's variable seed names.
             const seedsEntries: Fragment[] = [];
+            const canonicalPda = pdaNodes.get(String(defaultValue.pda.name));
+            const canonicalVariableSeeds =
+                canonicalPda?.seeds.filter(seed => seed.kind === 'variablePdaSeedNode') ?? [];
 
-            defaultValue.seeds.forEach(seedValue => {
-                if (!seedValue || typeof seedValue !== 'object') return;
-                if (!('name' in seedValue) || !('value' in seedValue)) return;
-                const seedNameValue = seedValue.name;
-                const seedNodeValue = seedValue.value;
-                if (typeof seedNameValue !== 'string') return;
-                if (!seedNodeValue || typeof seedNodeValue !== 'object') return;
-                if (!('kind' in seedNodeValue)) return;
-                const seedName = camelCase(seedNameValue);
-
-                const seedKind = (seedNodeValue as { kind: string }).kind;
-                if (seedKind === 'accountValueNode' && 'name' in seedNodeValue) {
+            const pushSeedEntry = (seedName: string, seedNodeValue: { kind: string; name?: string }) => {
+                const seedKind = seedNodeValue.kind;
+                if (seedKind === 'accountValueNode' && seedNodeValue.name) {
                     const accountRef = camelCase(String(seedNodeValue.name));
                     seedsEntries.push(fragment`${seedName}: accounts.${accountRef}`);
-                } else if (seedKind === 'argumentValueNode' && 'name' in seedNodeValue) {
+                } else if (seedKind === 'argumentValueNode' && seedNodeValue.name) {
                     const argRef = camelCase(String(seedNodeValue.name));
                     seedsEntries.push(fragment`${seedName}: args.${argRef}`);
                 } else if (seedKind === 'identityValueNode') {
@@ -694,8 +696,30 @@ function getInputDefaultFragment(
                         seedsEntries.push(fragment`${seedName}: accounts.authority`);
                     }
                 }
-                // Handle other seed value types as needed
-            });
+            };
+
+            if (canonicalVariableSeeds.length > 0) {
+                canonicalVariableSeeds.forEach((seed, index) => {
+                    const seedValue = defaultValue.seeds[index];
+                    if (!seedValue || typeof seedValue !== 'object') return;
+                    if (!('value' in seedValue)) return;
+                    const seedNodeValue = seedValue.value;
+                    if (!seedNodeValue || typeof seedNodeValue !== 'object') return;
+                    if (!('kind' in seedNodeValue)) return;
+                    pushSeedEntry(camelCase(seed.name), seedNodeValue as { kind: string; name?: string });
+                });
+            } else {
+                defaultValue.seeds.forEach(seedValue => {
+                    if (!seedValue || typeof seedValue !== 'object') return;
+                    if (!('name' in seedValue) || !('value' in seedValue)) return;
+                    const seedNameValue = seedValue.name;
+                    const seedNodeValue = seedValue.value;
+                    if (typeof seedNameValue !== 'string') return;
+                    if (!seedNodeValue || typeof seedNodeValue !== 'object') return;
+                    if (!('kind' in seedNodeValue)) return;
+                    pushSeedEntry(camelCase(seedNameValue), seedNodeValue as { kind: string; name?: string });
+                });
+            }
 
             const seedsContent = mergeFragments(seedsEntries, cs => cs.map(c => `            ${c},`).join('\n'));
 

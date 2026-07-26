@@ -1,11 +1,18 @@
 import {
+    accountValueNode,
     argumentValueNode,
     instructionAccountNode,
     instructionArgumentNode,
     instructionNode,
     instructionRemainingAccountsNode,
     numberTypeNode,
+    pdaNode,
+    pdaSeedValueNode,
+    pdaValueNode,
+    publicKeyTypeNode,
+    variablePdaSeedNode,
 } from '@codama/nodes';
+import { getResolvedInstructionInputsVisitor, visit } from '@codama/visitors-core';
 import { expect, test } from 'vitest';
 
 import { getInstructionFunctionFragment } from '../../src/fragments/instructionFunction';
@@ -265,4 +272,65 @@ test('it imports custom instruction data instead of generating codecs', () => {
     expect(result.content).not.toContain('export interface TransferInstructionArgs');
     expect(result.content).not.toContain('const TransferInstructionDataCodec');
     expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
+});
+
+test('it maps PDA seed keys to the shared helper when instruction seed names differ', () => {
+    const node = instructionNode({
+        accounts: [
+            instructionAccountNode({ isSigner: false, isWritable: false, name: 'custodian' }),
+            instructionAccountNode({
+                defaultValue: pdaValueNode(
+                    pdaNode({
+                        name: 'custodianTokenAccount',
+                        seeds: [
+                            variablePdaSeedNode('custodian', publicKeyTypeNode()),
+                            variablePdaSeedNode('tokenProgram', publicKeyTypeNode()),
+                            variablePdaSeedNode('vaultMint', publicKeyTypeNode()),
+                        ],
+                    }),
+                    [
+                        pdaSeedValueNode('custodian', accountValueNode('custodian')),
+                        pdaSeedValueNode('tokenProgram', accountValueNode('tokenProgram')),
+                        pdaSeedValueNode('vaultMint', accountValueNode('vaultMint')),
+                    ],
+                ),
+                isSigner: false,
+                isWritable: true,
+                name: 'custodianTokenAccount',
+            }),
+            instructionAccountNode({ isSigner: false, isWritable: false, name: 'vaultMint' }),
+            instructionAccountNode({ isSigner: false, isWritable: false, name: 'tokenProgram' }),
+        ],
+        arguments: [],
+        name: 'withdraw',
+    });
+
+    const canonicalPda = pdaNode({
+        name: 'custodianTokenAccount',
+        seeds: [
+            variablePdaSeedNode('custodian', publicKeyTypeNode()),
+            variablePdaSeedNode('vaultTokenProgram', publicKeyTypeNode()),
+            variablePdaSeedNode('vaultMint', publicKeyTypeNode()),
+        ],
+    });
+
+    const resolvedInputs = visit(node, getResolvedInstructionInputsVisitor());
+    const result = getInstructionFunctionFragment(
+        node,
+        getTypeVisitor(),
+        getBorshSchemaVisitor(),
+        resolvedInputs,
+        'JUPSTABLE_PROGRAM_ID',
+        new Map(),
+        {},
+        undefined,
+        [],
+        undefined,
+        new Map([['custodianTokenAccount', canonicalPda]]),
+    );
+
+    expect(result.content).toContain('vaultTokenProgram: accounts.tokenProgram');
+    expect(result.content).not.toContain('tokenProgram: accounts.tokenProgram');
+    expect(result.content).toContain('custodian: accounts.custodian');
+    expect(result.content).toContain('vaultMint: accounts.vaultMint');
 });
