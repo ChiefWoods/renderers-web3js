@@ -7,7 +7,9 @@ import {
     getImportStatements,
     ImportMap,
     mergeImportMaps,
+    parseImportInput,
     PathOverrides,
+    removeFromImportMap,
     resolveImportMapPaths,
 } from './importMap';
 
@@ -36,8 +38,28 @@ export function mergeFragments(
     });
 }
 
+export function use(importInput: string, module: string): Fragment {
+    const importInfo = parseImportInput(importInput);
+    return addFragmentImports(createFragment(importInfo.usedIdentifier), module, [importInput]);
+}
+
 export function addFragmentImports(fragment: Fragment, path: Path, names: string[] | string): Fragment {
     return Object.freeze({ ...fragment, imports: addToImportMap(fragment.imports, path, names) });
+}
+
+export function removeFragmentImports(fragment: Fragment, path: Path, usedIdentifiers: string[]): Fragment {
+    return Object.freeze({
+        ...fragment,
+        imports: removeFromImportMap(fragment.imports, path, usedIdentifiers),
+    });
+}
+
+export function getDocblockFragment(lines: Docs, withLineJump = false): Fragment | undefined {
+    const lineJump = withLineJump ? '\n' : '';
+    if (lines.length === 0) return;
+    if (lines.length === 1) return fragment`/** ${lines[0]} */${lineJump}`;
+    const prefixedLines = lines.map(line => (line ? ` * ${line}` : ' *'));
+    return fragment`/**\n${prefixedLines.join('\n')}\n */${lineJump}`;
 }
 
 // Code generation helper functions

@@ -20,12 +20,24 @@ export type NameTransformerKey =
     | 'accountFetchFunction'
     | 'accountFetchProgramAccountsFunction'
     | 'accountType'
+    | 'codecFunction'
+    | 'constant'
+    | 'dataArgsType'
+    | 'dataType'
+    | 'decoderFunction'
     | 'definedType'
     | 'definedTypeCodec'
+    | 'discriminatedUnionDiscriminator'
+    | 'discriminatedUnionFunction'
+    | 'discriminatedUnionVariant'
+    | 'encoderFunction'
+    | 'enumVariant'
     | 'instructionAccountsType'
     | 'instructionArgsType'
     | 'instructionCreateFunction'
     | 'instructionDataCodec'
+    | 'instructionDataType'
+    | 'isDiscriminatedUnionFunction'
     | 'pdaFindFunction'
     | 'pdaSeedsType'
     | 'programAddressConstant';
@@ -57,12 +69,24 @@ export const DEFAULT_NAME_TRANSFORMERS: NameTransformers = {
     accountFetchFunction: name => `fetch${pascalCase(name)}Account`,
     accountFetchProgramAccountsFunction: name => `fetchProgramAccounts${pascalCase(name)}`,
     accountType: name => `${pascalCase(name)}Account`,
+    codecFunction: name => `get${pascalCase(name)}Codec`,
+    constant: name => snakeCase(name).toUpperCase(),
+    dataArgsType: name => `${pascalCase(name)}Args`,
+    dataType: name => pascalCase(name),
+    decoderFunction: name => `get${pascalCase(name)}Decoder`,
     definedType: name => pascalCase(name),
     definedTypeCodec: name => `${camelCase(name)}Codec`,
+    discriminatedUnionDiscriminator: () => '__kind',
+    discriminatedUnionFunction: name => camelCase(name),
+    discriminatedUnionVariant: name => pascalCase(name),
+    encoderFunction: name => `get${pascalCase(name)}Encoder`,
+    enumVariant: name => pascalCase(name),
     instructionAccountsType: name => `${pascalCase(name)}InstructionAccounts`,
     instructionArgsType: name => `${pascalCase(name)}InstructionArgs`,
     instructionCreateFunction: name => `create${pascalCase(name)}Instruction`,
     instructionDataCodec: name => `${pascalCase(name)}InstructionDataCodec`,
+    instructionDataType: name => `${pascalCase(name)}InstructionData`,
+    isDiscriminatedUnionFunction: name => `is${pascalCase(name)}`,
     pdaFindFunction: name => `find${pascalCase(name)}Pda`,
     pdaSeedsType: name => `${pascalCase(name)}PdaSeeds`,
     programAddressConstant: name => `${name.toUpperCase()}_PROGRAM_ID`,

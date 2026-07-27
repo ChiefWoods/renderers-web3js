@@ -23,8 +23,10 @@ import {
     NameApi,
     ParsedCustomDataOptions,
     PathOverrides,
+    use,
 } from '../utils';
-import { BorshSchemaVisitor, getValueVisitor, TypeVisitor } from '../visitors';
+import { TypeManifestVisitor } from '../visitors/getTypeManifestVisitor';
+import { getValueVisitor } from '../visitors/getValueVisitor';
 
 type CustomInstructionData = NonNullable<ReturnType<ParsedCustomDataOptions['get']>>;
 
@@ -101,8 +103,7 @@ function getNumericDiscriminatorBufferFragment(
 
 export function getInstructionFunctionFragment(
     node: InstructionNode,
-    typeVisitor: TypeVisitor,
-    borshSchemaVisitor: BorshSchemaVisitor,
+    typeManifestVisitor: TypeManifestVisitor,
     resolvedInputs: ResolvedInstructionInput[] = [],
     programIdConstant?: string,
     customInstructionData: ParsedCustomDataOptions = new Map(),
@@ -129,12 +130,12 @@ export function getInstructionFunctionFragment(
     if (customData) {
         fragments.push(getCustomArgsInterfaceFragment(node, customData, names));
     } else if (hasArgs || hasRemainingAccountArgs) {
-        fragments.push(getArgsInterfaceFragment(node, typeVisitor, names));
+        fragments.push(getArgsInterfaceFragment(node, typeManifestVisitor, names));
     }
 
-    // 3. Generate Borsh schema (if there are arguments and not custom)
+    // 3. Generate instruction data encoder (if there are arguments and not custom)
     if (hasArgs && !customData) {
-        fragments.push(getInstructionSchemaFragment(node, borshSchemaVisitor, names));
+        fragments.push(getInstructionEncoderFragment(node, typeManifestVisitor, names));
     }
 
     // 4. Generate the instruction builder function
@@ -193,7 +194,11 @@ function getAccountsInterfaceFragment(
     return addFragmentImports(fragment`export interface ${interfaceName} {\n${fieldsContent}\n}`, 'web3', 'Address');
 }
 
-function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisitor, nameApi: NameApi): Fragment {
+function getArgsInterfaceFragment(
+    node: InstructionNode,
+    typeManifestVisitor: TypeManifestVisitor,
+    nameApi: NameApi,
+): Fragment {
     const interfaceName = nameApi.instructionArgsType(node.name);
 
     // Filter out arguments with defaultValueStrategy: 'omitted' (like discriminators)
@@ -206,7 +211,7 @@ function getArgsInterfaceFragment(node: InstructionNode, typeVisitor: TypeVisito
 
     const fields = userArgs.map(arg => {
         const fieldName = camelCase(arg.name);
-        const fieldType = visit(arg.type, typeVisitor);
+        const fieldType = visit(arg.type, typeManifestVisitor).looseType;
         return fragment`${fieldName}: ${fieldType}`;
     });
 
@@ -273,32 +278,29 @@ function getRemainingAccountsArgsFragment(node: InstructionNode): Fragment[] | u
     return fragments;
 }
 
-function getInstructionSchemaFragment(
+function getInstructionEncoderFragment(
     node: InstructionNode,
-    borshSchemaVisitor: BorshSchemaVisitor,
+    typeManifestVisitor: TypeManifestVisitor,
     nameApi: NameApi,
 ): Fragment {
-    const codecName = nameApi.instructionDataCodec(node.name);
-
     if (node.arguments.length === 0) {
         return fragment``;
     }
 
-    // Filter out omitted arguments (like discriminators) - they should not be in the schema
     const userArgs = getUserArgs(node);
     if (userArgs.length === 0 || usesRawStringEncoding(node)) {
         return fragment``;
     }
 
-    // Create a struct type from only the user-facing arguments
+    const argsType = nameApi.instructionArgsType(node.name);
+    const encoderFunction = nameApi.encoderFunction(nameApi.instructionDataType(node.name));
     const argsStruct = structTypeNodeFromInstructionArgumentNodes(userArgs);
-    const schema = visit(argsStruct, borshSchemaVisitor);
+    const manifest = visit(argsStruct, typeManifestVisitor);
+    const encoderType = use('type Encoder', 'codecs');
 
-    // Manually merge to ensure imports are preserved
-    const constFragment = fragment`const ${codecName} = `;
-    const semicolonFragment = fragment`;`;
-
-    return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
+    return fragment`function ${encoderFunction}(): ${encoderType}<${argsType}> {
+    return ${manifest.encoder};
+}`;
 }
 
 function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedInstructionInput[]): Fragment {
@@ -421,7 +423,9 @@ function getInstructionBuilderFragment(
     const functionName = nameApi.instructionCreateFunction(node.name);
     const accountsType = nameApi.instructionAccountsType(node.name);
     const argsType = nameApi.instructionArgsType(node.name);
-    const codecName = customData ? `${pascalCase(customData.importAs)}Codec` : nameApi.instructionDataCodec(node.name);
+    const customCodecName = customData ? `${pascalCase(customData.importAs)}Codec` : undefined;
+    const encoderFunction = nameApi.encoderFunction(nameApi.instructionDataType(node.name));
+    const encodeCall = customCodecName ? `${customCodecName}.encode(args)` : `${encoderFunction}().encode(args)`;
 
     // Check if we have user-facing args (non-omitted)
     const userArgs = getUserArgs(node);
@@ -478,7 +482,7 @@ function getInstructionBuilderFragment(
         const discriminatorArg = getDiscriminatorArg(node);
         if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
             const discriminatorHex = discriminatorArg.defaultValue.data;
-            dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+            dataFragment = fragment`const instructionData = Buffer.from(${encodeCall});
     const discriminator = Buffer.from('${discriminatorHex}', 'hex');
     const data = Buffer.concat([discriminator, instructionData]);`;
         } else if (
@@ -492,11 +496,11 @@ function getInstructionBuilderFragment(
                 discriminatorValue,
                 discriminatorArg.type,
             );
-            dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+            dataFragment = fragment`const instructionData = Buffer.from(${encodeCall});
     ${discriminatorFragment}
     const data = Buffer.concat([discriminator, instructionData]);`;
         } else {
-            dataFragment = fragment`const data = Buffer.from(${codecName}.encode(args));`;
+            dataFragment = fragment`const data = Buffer.from(${encodeCall});`;
         }
     } else if (hasArgs) {
         // Get discriminator from omitted args
@@ -532,7 +536,7 @@ function getInstructionBuilderFragment(
                 dataFragment = fragment`const data = Buffer.from(args.${stringArgName}, '${encoding}');`;
             } else if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
                 const discriminatorHex = discriminatorArg.defaultValue.data;
-                dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+                dataFragment = fragment`const instructionData = Buffer.from(${encodeCall});
     const discriminator = Buffer.from('${discriminatorHex}', 'hex');
     const data = Buffer.concat([discriminator, instructionData]);`;
             } else if (
@@ -546,11 +550,11 @@ function getInstructionBuilderFragment(
                     discriminatorValue,
                     discriminatorArg.type,
                 );
-                dataFragment = fragment`const instructionData = Buffer.from(${codecName}.encode(args));
+                dataFragment = fragment`const instructionData = Buffer.from(${encodeCall});
     ${discriminatorFragment}
     const data = Buffer.concat([discriminator, instructionData]);`;
             } else {
-                dataFragment = fragment`const data = Buffer.from(${codecName}.encode(args));`;
+                dataFragment = fragment`const data = Buffer.from(${encodeCall});`;
             }
         } else {
             // No user args, just discriminator

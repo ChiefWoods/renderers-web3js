@@ -1,24 +1,29 @@
-import { AccountNode, pascalCase } from '@codama/nodes';
+import { AccountNode, camelCase, pascalCase } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
 import {
     addFragmentImports,
+    DEFAULT_NAME_TRANSFORMERS,
     Fragment,
     fragment,
     getCodeFileFragment,
-    mergeFragments,
+    getNameApi,
+    NameApi,
     ParsedCustomDataOptions,
     PathOverrides,
+    use,
 } from '../utils';
 import { getGpaFiltersFromAccountNode } from '../utils/gpaFilters';
-import { BorshSchemaVisitor, TypeVisitor } from '../visitors';
+import { TypeManifestVisitor } from '../visitors/getTypeManifestVisitor';
+
+const defaultNameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS);
 
 export function getAccountTypeFragment(
     node: AccountNode,
-    typeVisitor: TypeVisitor,
-    borshSchemaVisitor: BorshSchemaVisitor,
+    typeManifestVisitor: TypeManifestVisitor,
     customAccountData: ParsedCustomDataOptions = new Map(),
     dependencyMap: PathOverrides = {},
+    nameApi: NameApi = defaultNameApi,
 ): Fragment {
     const customData = customAccountData.get(node.name);
     const fragments: Fragment[] = [];
@@ -38,27 +43,18 @@ export { ${schemaName} };`,
         fragments.push(getAccountInterfaceFragment(node, dataTypeName));
         fragments.push(getDeserializeAccountFragment(node, dataTypeName, schemaName, /* stripDiscriminators */ false));
     } else {
-        // 1. Generate AccountData interface
-        fragments.push(getAccountDataInterfaceFragment(node, typeVisitor));
-
-        // 2. Generate Account interface (address + data)
-        fragments.push(getAccountInterfaceFragment(node));
-
-        // 3. Generate Borsh schema for deserialization
-        fragments.push(getAccountSchemaFragment(node, borshSchemaVisitor));
-
-        // 4. Generate deserialize function
-        fragments.push(getDeserializeAccountFragment(node));
+        fragments.push(getAccountDataTypeFragment(node, typeManifestVisitor, nameApi));
+        fragments.push(getAccountInterfaceFragment(node, nameApi.accountDataType(node.name)));
+        fragments.push(getAccountDecoderFragment(node, typeManifestVisitor, nameApi));
+        fragments.push(
+            getDeserializeAccountFragment(node, nameApi.accountDataType(node.name), undefined, true, nameApi),
+        );
     }
 
-    // 5. Generate fetch function
-    fragments.push(getFetchAccountFragment(node));
+    fragments.push(getFetchAccountFragment(node, nameApi));
+    fragments.push(getFetchAllAccountsFragment(node, nameApi));
 
-    // 6. Generate fetchAll functions
-    fragments.push(getFetchAllAccountsFragment(node));
-
-    // 7. Generate fetchProgramAccounts (GPA) when filters available
-    const gpaFragment = getFetchProgramAccountsFragment(node);
+    const gpaFragment = getFetchProgramAccountsFragment(node, nameApi);
     if (gpaFragment) {
         fragments.push(gpaFragment);
     }
@@ -66,34 +62,26 @@ export { ${schemaName} };`,
     return getCodeFileFragment(fragments, dependencyMap);
 }
 
-function getAccountDataInterfaceFragment(node: AccountNode, typeVisitor: TypeVisitor): Fragment {
-    const name = pascalCase(node.name);
-    const interfaceName = `${name}AccountData`;
+function getAccountDataTypeFragment(
+    node: AccountNode,
+    typeManifestVisitor: TypeManifestVisitor,
+    nameApi: NameApi,
+): Fragment {
+    const interfaceName = nameApi.accountDataType(node.name);
+    const discriminatorNames = new Set(
+        (node.discriminators || []).filter(d => d.kind === 'fieldDiscriminatorNode').map(d => d.name),
+    );
 
-    // Get discriminator field names to exclude from the interface
-    const discriminatorNames = (node.discriminators || [])
-        .filter(d => d.kind === 'fieldDiscriminatorNode')
-        .map(d => d.name);
-
-    if (node.data.kind === 'structTypeNode') {
-        const filteredFields = node.data.fields.filter(field => !discriminatorNames.includes(field.name));
-
-        // Create a new struct node without discriminator fields
+    const manifest = visit(node, typeManifestVisitor);
+    if (node.data.kind === 'structTypeNode' && discriminatorNames.size > 0) {
+        // Rebuild type without discriminator fields for the public AccountData type.
+        const filteredFields = node.data.fields.filter(field => !discriminatorNames.has(field.name));
         const filteredStruct = { ...node.data, fields: filteredFields };
-        const dataType = visit(filteredStruct, typeVisitor);
-
-        if (dataType.content.startsWith('export interface') || dataType.content.startsWith('export type')) {
-            return fragment`${dataType.content.replace(/export (interface|type) \w+/, `export interface ${interfaceName}`)}`;
-        }
-        return fragment`export interface ${interfaceName} ${dataType}`;
+        const filteredManifest = visit(filteredStruct, typeManifestVisitor);
+        return fragment`export type ${interfaceName} = ${filteredManifest.strictType};`;
     }
 
-    // Fallback for non-struct types
-    const dataType = visit(node.data, typeVisitor);
-    if (dataType.content.startsWith('export interface') || dataType.content.startsWith('export type')) {
-        return fragment`${dataType.content.replace(/export (interface|type) \w+/, `export interface ${interfaceName}`)}`;
-    }
-    return fragment`export interface ${interfaceName} ${dataType}`;
+    return fragment`export type ${interfaceName} = ${manifest.strictType};`;
 }
 
 function getAccountInterfaceFragment(
@@ -113,29 +101,39 @@ function getAccountInterfaceFragment(
     );
 }
 
-function getAccountSchemaFragment(node: AccountNode, borshSchemaVisitor: BorshSchemaVisitor): Fragment {
-    const name = pascalCase(node.name);
-    const schemaName = `${name}AccountDataCodec`;
+function getAccountDecoderFragment(
+    node: AccountNode,
+    typeManifestVisitor: TypeManifestVisitor,
+    nameApi: NameApi,
+): Fragment {
+    const dataTypeName = nameApi.accountDataType(node.name);
+    const decoderFunction = `get${dataTypeName}Decoder`;
+    const manifest = visit(node, typeManifestVisitor);
+    const decoderType = use('type Decoder', 'codecs');
+    const hasFieldDiscriminators = (node.discriminators || []).some(d => d.kind === 'fieldDiscriminatorNode');
 
-    const schema = visit(node.data, borshSchemaVisitor);
+    // When discriminators are stripped from the public AccountData type, the decoder still
+    // returns them — type the decoder against the full on-wire shape so deserialize can strip.
+    const returnType = hasFieldDiscriminators ? manifest.strictType : dataTypeName;
 
-    // Manually merge to ensure imports are preserved
-    const constFragment = fragment`const ${schemaName} = `;
-    const semicolonFragment = fragment`;`;
-
-    return mergeFragments([constFragment, schema, semicolonFragment], cs => cs.join(''));
+    return fragment`function ${decoderFunction}(): ${decoderType}<${returnType}> {
+    return ${manifest.decoder};
+}`;
 }
 
 function getDeserializeAccountFragment(
     node: AccountNode,
     dataTypeName = `${pascalCase(node.name)}AccountData`,
-    schemaName = `${pascalCase(node.name)}AccountDataCodec`,
+    schemaName?: string,
     stripDiscriminators = true,
+    nameApi: NameApi = defaultNameApi,
 ): Fragment {
     const name = pascalCase(node.name);
     const functionName = `deserialize${name}Account`;
+    const decoderCall = schemaName
+        ? `${schemaName}.decode(data)`
+        : `get${nameApi.accountDataType(node.name)}Decoder().decode(data)`;
 
-    // Check if account has discriminator fields
     const discriminatorNames = (node.discriminators || [])
         .filter(d => d.kind === 'fieldDiscriminatorNode')
         .map(d => d.name);
@@ -143,26 +141,24 @@ function getDeserializeAccountFragment(
     const hasDiscriminator = stripDiscriminators && discriminatorNames.length > 0;
 
     if (hasDiscriminator) {
-        // Deserialize all fields, then filter out discriminators
-        const destructureFields = discriminatorNames.map(name => `${name}: _`).join(', ');
+        const destructureFields = discriminatorNames.map(n => `${camelCase(n)}: _`).join(', ');
         return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
-    const deserialized = ${schemaName}.decode(data);
+    const deserialized = ${decoderCall};
     const { ${destructureFields}, ...accountData } = deserialized;
     return accountData as ${dataTypeName};
 }`;
     }
 
-    // No discriminator - deserialize entire buffer
     return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
-    return ${schemaName}.decode(data);
+    return ${decoderCall};
 }`;
 }
 
-function getFetchAccountFragment(node: AccountNode): Fragment {
+function getFetchAccountFragment(node: AccountNode, nameApi: NameApi): Fragment {
     const name = pascalCase(node.name);
-    const functionName = `fetch${name}Account`;
-    const accountTypeName = `${name}Account`;
-    const deserializeFunctionName = `deserialize${name}Account`;
+    const functionName = nameApi.accountFetchFunction(node.name);
+    const accountTypeName = nameApi.accountType(node.name);
+    const deserializeFunctionName = nameApi.accountDeserializeFunction(node.name);
 
     return addFragmentImports(
         fragment`export async function ${functionName}(
@@ -183,12 +179,12 @@ function getFetchAccountFragment(node: AccountNode): Fragment {
     );
 }
 
-function getFetchAllAccountsFragment(node: AccountNode): Fragment {
+function getFetchAllAccountsFragment(node: AccountNode, nameApi: NameApi): Fragment {
     const name = pascalCase(node.name);
-    const fetchAllFunctionName = `fetchAll${name}Accounts`;
-    const fetchAllMaybeFunctionName = `fetchAllMaybe${name}Accounts`;
-    const accountTypeName = `${name}Account`;
-    const deserializeFunctionName = `deserialize${name}Account`;
+    const fetchAllFunctionName = nameApi.accountFetchAllFunction(node.name);
+    const fetchAllMaybeFunctionName = nameApi.accountFetchAllMaybeFunction(node.name);
+    const accountTypeName = nameApi.accountType(node.name);
+    const deserializeFunctionName = nameApi.accountDeserializeFunction(node.name);
 
     return addFragmentImports(
         fragment`export async function ${fetchAllMaybeFunctionName}(
@@ -225,14 +221,13 @@ export async function ${fetchAllFunctionName}(
     );
 }
 
-function getFetchProgramAccountsFragment(node: AccountNode): Fragment | undefined {
+function getFetchProgramAccountsFragment(node: AccountNode, nameApi: NameApi): Fragment | undefined {
     const filters = getGpaFiltersFromAccountNode(node);
     if (!filters) return undefined;
 
-    const name = pascalCase(node.name);
-    const functionName = `fetchProgramAccounts${name}`;
-    const accountTypeName = `${name}Account`;
-    const deserializeFunctionName = `deserialize${name}Account`;
+    const functionName = nameApi.accountFetchProgramAccountsFunction(node.name);
+    const accountTypeName = nameApi.accountType(node.name);
+    const deserializeFunctionName = nameApi.accountDeserializeFunction(node.name);
 
     const filterEntries: string[] = [];
     if (filters.memcmp) {

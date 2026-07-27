@@ -12,12 +12,28 @@ import {
     publicKeyTypeNode,
     variablePdaSeedNode,
 } from '@codama/nodes';
-import { getResolvedInstructionInputsVisitor, visit } from '@codama/visitors-core';
+import { getResolvedInstructionInputsVisitor, LinkableDictionary, NodeStack, visit } from '@codama/visitors-core';
 import { expect, test } from 'vitest';
 
 import { getInstructionFunctionFragment } from '../../src/fragments/instructionFunction';
-import { parseCustomDataOptions } from '../../src/utils';
-import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
+import { DEFAULT_NAME_TRANSFORMERS, getImportFromFactory, getNameApi, parseCustomDataOptions } from '../../src/utils';
+import { getTypeManifestVisitor } from '../../src/visitors';
+
+function createTypeManifestVisitor() {
+    return getTypeManifestVisitor({
+        customAccountData: parseCustomDataOptions([], 'AccountData'),
+        customInstructionData: parseCustomDataOptions([], 'InstructionData'),
+        getImportFrom: getImportFromFactory(
+            {},
+            parseCustomDataOptions([], 'AccountData'),
+            parseCustomDataOptions([], 'InstructionData'),
+        ),
+        linkables: new LinkableDictionary(),
+        nameApi: getNameApi(DEFAULT_NAME_TRANSFORMERS),
+        nonScalarEnums: [],
+        stack: new NodeStack(),
+    });
+}
 
 test('it generates instruction with accounts and args', () => {
     const node = instructionNode({
@@ -30,21 +46,15 @@ test('it generates instruction with accounts and args', () => {
         name: 'transfer',
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).toContain('export interface TransferInstructionAccounts');
     expect(result.content).toContain('from: Address');
     expect(result.content).toContain('to: Address');
     expect(result.content).toContain('authority: Address');
     expect(result.content).toContain('export interface TransferInstructionArgs');
-    expect(result.content).toContain('amount: bigint');
-    expect(result.content).toContain('const TransferInstructionDataCodec');
+    expect(result.content).toContain('amount: number | bigint');
+    expect(result.content).toContain('function getTransferInstructionDataEncoder(): Encoder<TransferInstructionArgs>');
     expect(result.content).toContain('export function createTransferInstruction');
     expect(result.content).toContain('accounts: TransferInstructionAccounts');
     expect(result.content).toContain('args: TransferInstructionArgs');
@@ -54,7 +64,7 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to
     expect(result.content).toContain('isSigner: true, isWritable: false'); // authority
-    expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
+    expect(result.content).toContain('Buffer.from(getTransferInstructionDataEncoder().encode(args))');
 
     // Check imports in content (getCodeFileFragment bakes imports into content)
     expect(result.content).toContain('import {');
@@ -70,13 +80,7 @@ test('it generates instruction with no arguments', () => {
         name: 'initialize',
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).toContain('export interface InitializeInstructionAccounts');
     expect(result.content).not.toContain('InstructionArgs');
@@ -95,21 +99,15 @@ test('it generates instruction with no accounts', () => {
         name: 'log',
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).not.toContain('InstructionAccounts');
     expect(result.content).toContain('export interface LogInstructionArgs');
-    expect(result.content).toContain('const LogInstructionDataCodec');
+    expect(result.content).toContain('function getLogInstructionDataEncoder(): Encoder<LogInstructionArgs>');
     expect(result.content).toContain('export function createLogInstruction');
     expect(result.content).toContain('args: LogInstructionArgs, programId: Address = DUMMYPRG_PROGRAM_ID');
     expect(result.content).toContain('const keys: AccountMeta[] = []');
-    expect(result.content).toContain('Buffer.from(LogInstructionDataCodec.encode(args))');
+    expect(result.content).toContain('Buffer.from(getLogInstructionDataEncoder().encode(args))');
 });
 
 test('it handles optional accounts', () => {
@@ -123,7 +121,7 @@ test('it handles optional accounts', () => {
         optionalAccountStrategy: 'omitted',
     });
 
-    const result = getInstructionFunctionFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor());
 
     expect(result.content).toContain('source: Address');
     expect(result.content).toContain('delegate?: Address'); // Optional in interface
@@ -142,13 +140,7 @@ test('it preserves non-trailing optional account order with program id placehold
         optionalAccountStrategy: 'programId',
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     const sourceIndex = result.content.indexOf('{ pubkey: accounts.source');
     const delegateIndex = result.content.indexOf('accounts.delegate');
@@ -175,13 +167,7 @@ test('it generates remaining account inputs when remaining accounts are argument
         ],
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     expect(result.content).toContain('signers?: Array<Keypair>;');
     expect(result.content).toContain('args: AddMemoInstructionArgs, programId: Address = DUMMYPRG_PROGRAM_ID');
@@ -209,13 +195,7 @@ test('it generates correct semicolons for multiple remaining account fields', ()
         ],
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     // Each field must have its own semicolon (not just one at the end)
     expect(result.content).toContain('signers?: Array<Keypair>;');
@@ -236,13 +216,7 @@ test('it skips remaining accounts when name matches existing instruction argumen
         ],
     });
 
-    const result = getInstructionFunctionFragment(
-        node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
-        [],
-        'DUMMYPRG_PROGRAM_ID',
-    );
+    const result = getInstructionFunctionFragment(node, createTypeManifestVisitor(), [], 'DUMMYPRG_PROGRAM_ID');
 
     // Should NOT generate keys.push for signers from remaining accounts (would duplicate)
     expect(result.content).not.toContain('keys.push(...(args.signers');
@@ -258,8 +232,7 @@ test('it imports custom instruction data instead of generating codecs', () => {
     const customInstructionData = parseCustomDataOptions(['transfer'], 'InstructionData');
     const result = getInstructionFunctionFragment(
         node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
+        createTypeManifestVisitor(),
         [],
         'DUMMYPRG_PROGRAM_ID',
         customInstructionData,
@@ -270,7 +243,7 @@ test('it imports custom instruction data instead of generating codecs', () => {
     );
     expect(result.content).toContain('export type TransferInstructionArgs = TransferInstructionData');
     expect(result.content).not.toContain('export interface TransferInstructionArgs');
-    expect(result.content).not.toContain('const TransferInstructionDataCodec');
+    expect(result.content).not.toContain('function getTransferInstructionDataEncoder');
     expect(result.content).toContain('Buffer.from(TransferInstructionDataCodec.encode(args))');
 });
 
@@ -317,8 +290,7 @@ test('it maps PDA seed keys to the shared helper when instruction seed names dif
     const resolvedInputs = visit(node, getResolvedInstructionInputsVisitor());
     const result = getInstructionFunctionFragment(
         node,
-        getTypeVisitor(),
-        getBorshSchemaVisitor(),
+        createTypeManifestVisitor(),
         resolvedInputs,
         'JUPSTABLE_PROGRAM_ID',
         new Map(),

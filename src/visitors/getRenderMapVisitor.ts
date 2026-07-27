@@ -30,7 +30,7 @@ import {
     parseCustomDataOptions,
     RenderMapOptions,
 } from '../utils';
-import { getBorshSchemaVisitor } from './getBorshSchemaVisitor';
+import { getTypeManifestVisitor } from './getTypeManifestVisitor';
 import { getTypeVisitor } from './getTypeVisitor';
 
 export function getRenderMapVisitor(options: RenderMapOptions = {}) {
@@ -48,7 +48,15 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const dependencyMap = options.dependencyMap ?? {};
     let currentProgramIdConstant: string | undefined;
     const typeVisitor = getTypeVisitor({ getImportFrom, stack });
-    const borshSchemaVisitor = getBorshSchemaVisitor({ getImportFrom, stack });
+    const typeManifestVisitor = getTypeManifestVisitor({
+        customAccountData,
+        customInstructionData,
+        getImportFrom,
+        linkables,
+        nameApi,
+        nonScalarEnums,
+        stack,
+    });
     const resolvedInstructionInputVisitor = getResolvedInstructionInputsVisitor();
 
     return pipe(
@@ -60,14 +68,14 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitAccount(node) {
                     return createRenderMap(
                         `accounts/${camelCase(node.name)}.ts`,
-                        getAccountTypeFragment(node, typeVisitor, borshSchemaVisitor, customAccountData, dependencyMap),
+                        getAccountTypeFragment(node, typeManifestVisitor, customAccountData, dependencyMap, nameApi),
                     );
                 },
 
                 visitDefinedType(node) {
                     return createRenderMap(
                         `types/${camelCase(node.name)}.ts`,
-                        getDefinedTypeFragment(node, typeVisitor, borshSchemaVisitor, dependencyMap),
+                        getDefinedTypeFragment(node, typeManifestVisitor, nameApi, dependencyMap),
                     );
                 },
 
@@ -76,8 +84,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         `instructions/${camelCase(node.name)}.ts`,
                         getInstructionFunctionFragment(
                             node,
-                            typeVisitor,
-                            borshSchemaVisitor,
+                            typeManifestVisitor,
                             visit(node, resolvedInstructionInputVisitor),
                             currentProgramIdConstant,
                             customInstructionData,
@@ -135,8 +142,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                                     `instructions/${camelCase(n.name)}.ts`,
                                     getInstructionFunctionFragment(
                                         n,
-                                        typeVisitor,
-                                        borshSchemaVisitor,
+                                        typeManifestVisitor,
                                         visit(n, resolvedInstructionInputVisitor),
                                         currentProgramIdConstant,
                                         customInstructionData,

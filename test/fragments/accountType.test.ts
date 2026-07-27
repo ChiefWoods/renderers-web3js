@@ -1,9 +1,26 @@
 import { accountNode, numberTypeNode, publicKeyTypeNode, structFieldTypeNode, structTypeNode } from '@codama/nodes';
+import { LinkableDictionary, NodeStack } from '@codama/visitors-core';
 import { expect, test } from 'vitest';
 
 import { getAccountTypeFragment } from '../../src/fragments/accountType';
-import { parseCustomDataOptions } from '../../src/utils';
-import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
+import { DEFAULT_NAME_TRANSFORMERS, getImportFromFactory, getNameApi, parseCustomDataOptions } from '../../src/utils';
+import { getTypeManifestVisitor } from '../../src/visitors';
+
+function createTypeManifestVisitor() {
+    return getTypeManifestVisitor({
+        customAccountData: parseCustomDataOptions([], 'AccountData'),
+        customInstructionData: parseCustomDataOptions([], 'InstructionData'),
+        getImportFrom: getImportFromFactory(
+            {},
+            parseCustomDataOptions([], 'AccountData'),
+            parseCustomDataOptions([], 'InstructionData'),
+        ),
+        linkables: new LinkableDictionary(),
+        nameApi: getNameApi(DEFAULT_NAME_TRANSFORMERS),
+        nonScalarEnums: [],
+        stack: new NodeStack(),
+    });
+}
 
 test('it generates account with struct data', () => {
     const node = accountNode({
@@ -15,10 +32,10 @@ test('it generates account with struct data', () => {
         name: 'token',
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
-    // Check AccountData interface
-    expect(result.content).toContain('export interface TokenAccountData');
+    // Check AccountData type
+    expect(result.content).toContain('export type TokenAccountData');
     expect(result.content).toContain('amount: bigint');
     expect(result.content).toContain('owner: Address');
     expect(result.content).toContain('delegate: Address');
@@ -28,14 +45,14 @@ test('it generates account with struct data', () => {
     expect(result.content).toContain('address: Address');
     expect(result.content).toContain('data: TokenAccountData');
 
-    // Check Borsh schema
-    expect(result.content).toContain('const TokenAccountDataCodec');
-    expect(result.content).toContain('getStructCodec([');
-    expect(result.content).toContain("['amount', getU64Codec()]");
+    // Check decoder with explicit return type
+    expect(result.content).toContain('function getTokenAccountDataDecoder(): Decoder<TokenAccountData>');
+    expect(result.content).toContain('getStructDecoder([');
+    expect(result.content).toContain("['amount', getU64Decoder()]");
 
     // Check deserialize function
     expect(result.content).toContain('export function deserializeTokenAccount(data: Uint8Array): TokenAccountData');
-    expect(result.content).toContain('return TokenAccountDataCodec.decode(data)');
+    expect(result.content).toContain('return getTokenAccountDataDecoder().decode(data)');
 
     // Check fetch function
     expect(result.content).toContain('export async function fetchTokenAccount');
@@ -72,13 +89,13 @@ test('it generates account with simple data', () => {
         name: 'mint',
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('export interface MintAccountData');
+    expect(result.content).toContain('export type MintAccountData');
     expect(result.content).toContain('supply: bigint');
     expect(result.content).toContain('decimals: number');
     expect(result.content).toContain('export interface MintAccount');
-    expect(result.content).toContain('const MintAccountDataCodec');
+    expect(result.content).toContain('function getMintAccountDataDecoder(): Decoder<MintAccountData>');
     expect(result.content).toContain('export function deserializeMintAccount');
     expect(result.content).toContain('export async function fetchMintAccount');
 });
@@ -89,7 +106,7 @@ test('it generates proper error message in fetch function', () => {
         name: 'metadata',
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
     expect(result.content).toContain("throw new Error('Metadata account not found at address: ' + address.toBase58())");
 });
@@ -100,11 +117,12 @@ test('it handles empty struct', () => {
         name: 'empty',
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('export interface EmptyAccountData');
-    expect(result.content).toContain('{}');
-    expect(result.content).toContain('const EmptyAccountDataCodec = getStructCodec([])');
+    expect(result.content).toContain('export type EmptyAccountData');
+    expect(result.content).toMatch(/EmptyAccountData = \{\s*\}/);
+    expect(result.content).toContain('function getEmptyAccountDataDecoder(): Decoder<EmptyAccountData>');
+    expect(result.content).toContain('getStructDecoder([])');
 });
 
 test('it generates fetchProgramAccounts when account has size', () => {
@@ -117,7 +135,7 @@ test('it generates fetchProgramAccounts when account has size', () => {
         size: 80,
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
     expect(result.content).toContain('export async function fetchProgramAccountsNonce');
     expect(result.content).toContain('connection.getProgramAccounts(programId');
@@ -134,7 +152,7 @@ test('it does not generate fetchProgramAccounts when no size or discriminator', 
         name: 'unfilterable',
     });
 
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor());
 
     expect(result.content).not.toContain('fetchProgramAccounts');
 });
@@ -146,13 +164,13 @@ test('it imports custom account data instead of generating codecs', () => {
     });
 
     const customAccountData = parseCustomDataOptions(['token'], 'AccountData');
-    const result = getAccountTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor(), customAccountData);
+    const result = getAccountTypeFragment(node, createTypeManifestVisitor(), customAccountData);
 
     expect(result.content).toContain("import { TokenAccountData, TokenAccountDataCodec } from '../../hooked'");
     expect(result.content).toContain('export type { TokenAccountData }');
     expect(result.content).toContain('export { TokenAccountDataCodec }');
-    expect(result.content).not.toContain('export interface TokenAccountData');
-    expect(result.content).not.toContain('const TokenAccountDataCodec');
+    expect(result.content).not.toContain('export type TokenAccountData =');
+    expect(result.content).not.toContain('function getTokenAccountDataDecoder');
     expect(result.content).toContain('data: TokenAccountData');
     expect(result.content).toContain('return TokenAccountDataCodec.decode(data)');
     expect(result.content).toContain('export async function fetchTokenAccount');

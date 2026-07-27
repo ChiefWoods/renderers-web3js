@@ -12,7 +12,43 @@ export function addToImportMap(map: ImportMap, path: Path, names: string[] | str
     return mergeImportMaps([map, createImportMap([[path, names]])]);
 }
 
+export function parseImportInput(input: string): {
+    importedIdentifier: string;
+    isType: boolean;
+    usedIdentifier: string;
+} {
+    const matches = input.match(/^(type )?([^ ]+)(?: as (.+))?$/);
+    if (!matches) return Object.freeze({ importedIdentifier: input, isType: false, usedIdentifier: input });
+
+    const [, isType, name, alias] = matches;
+    return Object.freeze({
+        importedIdentifier: name,
+        isType: !!isType,
+        usedIdentifier: alias ?? name,
+    });
+}
+
+export function removeFromImportMap(map: ImportMap, path: Path, usedIdentifiers: string[]): ImportMap {
+    const moduleImports = map.get(path);
+    if (!moduleImports) return map;
+
+    const next = new Set(moduleImports);
+    for (const usedIdentifier of usedIdentifiers) {
+        next.delete(usedIdentifier);
+        next.delete(`type ${usedIdentifier}`);
+    }
+
+    const newMap = new Map(map);
+    if (next.size === 0) {
+        newMap.delete(path);
+    } else {
+        newMap.set(path, next);
+    }
+    return Object.freeze(newMap);
+}
+
 export function mergeImportMaps(importMaps: ImportMap[]): ImportMap {
+    if (importMaps.length === 0) return createImportMap();
     const merged = new Map(importMaps[0]);
     for (const map of importMaps.slice(1)) {
         for (const [key, value] of map) {

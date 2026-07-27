@@ -10,7 +10,7 @@ This is a **Codama renderer** project that generates TypeScript client code for 
 2. **Generates TypeScript Code** - Creates client-side code with:
     - Instruction builder functions (e.g., `createCreateInstruction`)
     - Account data interfaces and fetch functions
-    - Borsh serialization schemas
+    - Encoder/decoder codecs via `@solana/codecs`
     - Type definitions
 
 3. **Supports Multiple Targets** - Builds for Node, Browser, and React Native
@@ -24,8 +24,8 @@ src/
 │   ├── accountType.ts               # Account type generator
 │   └── definedType.ts               # Custom type generator
 ├── visitors/            # AST visitors for type conversion
-│   ├── getBorshSchemaVisitor.ts     # Generates @coral-xyz/borsh schemas
-│   ├── getTypeVisitor.ts            # Generates TypeScript types
+│   ├── getTypeManifestVisitor.ts  # Encoder/decoder + strict/loose types
+│   ├── getTypeVisitor.ts            # Generates TypeScript types (e.g. PDA seeds)
 │   └── getValueVisitor.ts           # Generates value literals
 └── utils/               # Utility functions
     ├── fragment.ts      # Fragment system for code generation
@@ -70,8 +70,8 @@ type Fragment = {
 
 Codama uses the **Visitor pattern** to traverse AST nodes and generate code:
 
-- **TypeVisitor** - Converts Codama type nodes → TypeScript types
-- **BorshSchemaVisitor** - Converts Codama type nodes → Borsh schema calls
+- **TypeManifestVisitor** - Converts Codama type nodes → encoder/decoder fragments + strict/loose types
+- **TypeVisitor** - Converts Codama type nodes → TypeScript types (still used for PDA seeds)
 - **ValueVisitor** - Converts value nodes → TypeScript literals
 
 ### 3. Instruction Generation Pipeline
@@ -83,7 +83,7 @@ getInstructionFunctionFragment()
     ↓
 ├─→ getAccountsInterfaceFragment()     // Creates accounts interface
 ├─→ getArgsInterfaceFragment()         // Creates args interface
-├─→ getInstructionSchemaFragment()     // Creates Borsh schema
+├─→ getInstructionDataEncoder()        // Creates instruction data encoder
 └─→ getInstructionBuilderFragment()    // Creates builder function
     ↓
 Final TypeScript File
@@ -240,7 +240,7 @@ if (node.accounts.length > 0) {
 
 ```typescript
 const fieldType = visit(arg.type, typeVisitor);
-const fieldSchema = visit(arg.type, borshSchemaVisitor);
+const fieldManifest = visit(arg.type, typeManifestVisitor);
 ```
 
 ### Debugging Tips
@@ -361,8 +361,8 @@ cd test/e2e/system && bun run test
 
 - **Change instruction generation** → `src/fragments/instructionFunction.ts`
 - **Change account generation** → `src/fragments/accountType.ts`
-- **Change type mapping** → `src/visitors/getTypeVisitor.ts`
-- **Change Borsh schema** → `src/visitors/getBorshSchemaVisitor.ts`
+- **Change type mapping / codecs** → `src/visitors/getTypeManifestVisitor.ts`
+- **Change PDA seed types** → `src/visitors/getTypeVisitor.ts`
 - **Add new fragment type** → `src/fragments/` + update render map
 
 ### Important Functions
@@ -370,7 +370,7 @@ cd test/e2e/system && bun run test
 - `getInstructionFunctionFragment()` - Main instruction generator
 - `getAccountsInterfaceFragment()` - Generates accounts interface
 - `getArgsInterfaceFragment()` - Generates args interface
-- `getInstructionSchemaFragment()` - Generates Borsh schema
+- `getTypeManifestVisitor()` - Generates encoder/decoder manifests
 - `getKeysArrayFragment()` - Generates AccountMeta[] array
 - `getInstructionBuilderFragment()` - Generates builder function
 

@@ -12,10 +12,28 @@ import {
     structTypeNode,
     tupleTypeNode,
 } from '@codama/nodes';
+import { LinkableDictionary, NodeStack } from '@codama/visitors-core';
 import { expect, test } from 'vitest';
 
 import { getDefinedTypeFragment } from '../../src/fragments/definedType';
-import { getBorshSchemaVisitor, getTypeVisitor } from '../../src/visitors';
+import { DEFAULT_NAME_TRANSFORMERS, getImportFromFactory, getNameApi, parseCustomDataOptions } from '../../src/utils';
+import { getTypeManifestVisitor } from '../../src/visitors';
+
+function createTypeManifestVisitor() {
+    return getTypeManifestVisitor({
+        customAccountData: parseCustomDataOptions([], 'AccountData'),
+        customInstructionData: parseCustomDataOptions([], 'InstructionData'),
+        getImportFrom: getImportFromFactory(
+            {},
+            parseCustomDataOptions([], 'AccountData'),
+            parseCustomDataOptions([], 'InstructionData'),
+        ),
+        linkables: new LinkableDictionary(),
+        nameApi: getNameApi(DEFAULT_NAME_TRANSFORMERS),
+        nonScalarEnums: [],
+        stack: new NodeStack(),
+    });
+}
 
 test('it generates discriminated union helper functions for data enums', () => {
     const node = definedTypeNode({
@@ -33,20 +51,24 @@ test('it generates discriminated union helper functions for data enums', () => {
         ]),
     });
 
-    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getDefinedTypeFragment(node, createTypeManifestVisitor());
 
+    expect(result.content).toContain(`export function event(kind: 'Quit'): GetDiscriminatedUnionVariant<EventArgs`);
+    expect(result.content).toContain('GetDiscriminatedUnionVariant');
+    expect(result.content).toContain('GetDiscriminatedUnionVariantContent');
     expect(result.content).toContain(
-        `export function event(kind: 'Quit'): GetDiscriminatedUnionVariant<Event, '__kind', 'Quit'>;`,
-    );
-    expect(result.content).toContain('type GetDiscriminatedUnionVariant<');
-    expect(result.content).toContain('type GetDiscriminatedUnionVariantContent<');
-    expect(result.content).toContain(
-        `export function event(kind: 'Write', data: GetDiscriminatedUnionVariantContent<Event, '__kind', 'Write'>['fields']): GetDiscriminatedUnionVariant<Event, '__kind', 'Write'>;`,
+        `export function event(kind: 'Write', data: GetDiscriminatedUnionVariantContent<EventArgs, '__kind', 'Write'>['fields']): GetDiscriminatedUnionVariant<EventArgs, '__kind', 'Write'>;`,
     );
     expect(result.content).toContain(
-        `export function event(kind: 'Move', data: GetDiscriminatedUnionVariantContent<Event, '__kind', 'Move'>): GetDiscriminatedUnionVariant<Event, '__kind', 'Move'>;`,
+        `export function event(kind: 'Move', data: GetDiscriminatedUnionVariantContent<EventArgs, '__kind', 'Move'>): GetDiscriminatedUnionVariant<EventArgs, '__kind', 'Move'>;`,
     );
     expect(result.content).toContain(`export function isEvent<K extends Event['__kind']>`);
+    expect(result.content).toContain('export function getEventEncoder(): Encoder<EventArgs>');
+    expect(result.content).toContain('export function getEventDecoder(): Decoder<Event>');
+    expect(result.content).toContain('export function getEventCodec(): Codec<EventArgs, Event>');
+    expect(result.content).toContain('getDiscriminatedUnionEncoder');
+    expect(result.content).toContain('getDiscriminatedUnionDecoder');
+    expect(result.content).not.toContain('as unknown as Codec');
 });
 
 test('it generates codec for tuple defined types', () => {
@@ -55,10 +77,13 @@ test('it generates codec for tuple defined types', () => {
         type: tupleTypeNode([numberTypeNode('u32'), stringTypeNode('utf8')]),
     });
 
-    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getDefinedTypeFragment(node, createTypeManifestVisitor());
 
     expect(result.content).toContain('export type MyTuple = ');
-    expect(result.content).toContain('export const myTupleCodec = getTupleCodec(');
+    expect(result.content).toContain('export function getMyTupleEncoder()');
+    expect(result.content).toContain('export function getMyTupleDecoder()');
+    expect(result.content).toContain('getTupleEncoder');
+    expect(result.content).toContain('getTupleDecoder');
 });
 
 test('it does not generate discriminated union helper functions for non-enums', () => {
@@ -67,7 +92,7 @@ test('it does not generate discriminated union helper functions for non-enums', 
         type: structTypeNode([structFieldTypeNode({ name: 'value', type: numberTypeNode('u8') })]),
     });
 
-    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getDefinedTypeFragment(node, createTypeManifestVisitor());
 
     expect(result.content).not.toContain('// Data Enum Helpers.');
     expect(result.content).not.toContain('export function myStruct');
@@ -80,8 +105,10 @@ test('it generates codec for tuple-based defined types', () => {
         type: tupleTypeNode([arrayTypeNode(numberTypeNode('u64'), fixedCountNode(4))]),
     });
 
-    const result = getDefinedTypeFragment(node, getTypeVisitor(), getBorshSchemaVisitor());
+    const result = getDefinedTypeFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('numberCodec');
-    expect(result.content).toContain('getTupleCodec');
+    expect(result.content).toContain('getNumberEncoder');
+    expect(result.content).toContain('getNumberDecoder');
+    expect(result.content).toContain('getTupleEncoder');
+    expect(result.content).toContain('getTupleDecoder');
 });
