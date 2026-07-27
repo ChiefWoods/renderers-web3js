@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.4.0
+
+### Minor Changes
+
+- Generate encoder, decoder and codec return types
+
 ## 0.3.1
 
 ### Patch Changes
