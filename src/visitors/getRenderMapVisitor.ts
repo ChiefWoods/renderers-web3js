@@ -15,15 +15,21 @@ import {
 import {
     getAccountTypeFragment,
     getDefinedTypeFragment,
+    getErrorsFragment,
+    getEventFragment,
     getInstructionFunctionFragment,
     getPdaFunctionFragment,
+    getConstantsFragment,
     getProgramConstantsFragment,
+    getProgramFragment,
     getProgramIdConstantName,
     getTypesIndexFragment,
 } from '../fragments';
 import {
     DEFAULT_NAME_TRANSFORMERS,
     extractPdasFromInstructions,
+    fragment,
+    getCodeFileFragment,
     getDefinedTypeNodesToExtract,
     getImportFromFactory,
     getNameApi,
@@ -47,6 +53,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
     const renderParentInstructions = options.renderParentInstructions ?? false;
     const dependencyMap = options.dependencyMap ?? {};
     let currentProgramIdConstant: string | undefined;
+    let currentProgramName: string | undefined;
     const typeVisitor = getTypeVisitor({ getImportFrom, stack });
     const typeManifestVisitor = getTypeManifestVisitor({
         customAccountData,
@@ -92,6 +99,8 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             nameApi,
                             asyncResolvers,
                             getImportFrom,
+                            undefined,
+                            currentProgramName,
                         ),
                     );
                 },
@@ -99,12 +108,19 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                 visitPda(node) {
                     return createRenderMap(
                         `pdas/${camelCase(node.name)}.ts`,
-                        getPdaFunctionFragment(node, typeVisitor, currentProgramIdConstant, dependencyMap),
+                        getPdaFunctionFragment(
+                            node,
+                            typeVisitor,
+                            currentProgramIdConstant,
+                            dependencyMap,
+                            currentProgramName,
+                        ),
                     );
                 },
 
                 visitProgram(node, { self }) {
                     currentProgramIdConstant = getProgramIdConstantName(node.name, nameApi);
+                    currentProgramName = node.name;
                     try {
                         const instructionsToRender = getAllInstructionsWithSubs(node, {
                             leavesOnly: !renderParentInstructions,
@@ -122,19 +138,87 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                             ...node,
                             definedTypes: allDefinedTypes,
                             instructions: instructionsToRender,
+                            pdas: allPdas,
                         };
+                        const programFileName = camelCase(node.name);
+                        const errorsFragment = getErrorsFragment(node, dependencyMap);
+                        const events = node.events ?? [];
+                        const getBarrelFragment = (names: string[]) =>
+                            getCodeFileFragment(
+                                [fragment`${names.map(name => `export * from './${name}';`).join('\n')}`],
+                                dependencyMap,
+                            );
+                        const getPublicNames = <T extends { name: string }>(nodes: T[]) =>
+                            nodes
+                                .filter(child => !internalNodes.includes(camelCase(child.name)))
+                                .map(child => camelCase(child.name));
 
                         const renderMaps = [
                             createRenderMap(
                                 `index.ts`,
-                                getProgramConstantsFragment(
-                                    programForExports,
-                                    internalNodes,
-                                    dependencyMap,
-                                    nameApi,
-                                    nonScalarEnums,
+                                getProgramConstantsFragment(programForExports, internalNodes, dependencyMap),
+                            ),
+                            ...((node.constants ?? []).length > 0
+                                ? [
+                                      createRenderMap(
+                                          `constants.ts`,
+                                          getConstantsFragment(
+                                              programForExports,
+                                              typeManifestVisitor,
+                                              dependencyMap,
+                                              nonScalarEnums,
+                                          ),
+                                      ),
+                                  ]
+                                : []),
+                            createRenderMap(
+                                `programs/${programFileName}.ts`,
+                                getProgramFragment(programForExports, dependencyMap, nameApi),
+                            ),
+                            createRenderMap(
+                                `programs/index.ts`,
+                                getCodeFileFragment([fragment`export * from './${programFileName}';`], dependencyMap),
+                            ),
+                            ...(errorsFragment
+                                ? [
+                                      createRenderMap(`errors/${programFileName}.ts`, errorsFragment),
+                                      createRenderMap(
+                                          `errors/index.ts`,
+                                          getCodeFileFragment(
+                                              [fragment`export * from './${programFileName}';`],
+                                              dependencyMap,
+                                          ),
+                                      ),
+                                  ]
+                                : []),
+                            ...(node.accounts.length > 0
+                                ? [
+                                      createRenderMap(
+                                          `accounts/index.ts`,
+                                          getBarrelFragment(getPublicNames(node.accounts)),
+                                      ),
+                                  ]
+                                : []),
+                            ...events.map(event =>
+                                createRenderMap(
+                                    `events/${camelCase(event.name)}.ts`,
+                                    getEventFragment(event, typeManifestVisitor, dependencyMap),
                                 ),
                             ),
+                            ...(events.length > 0
+                                ? [createRenderMap(`events/index.ts`, getBarrelFragment(getPublicNames(events)))]
+                                : []),
+                            ...(instructionsToRender.length > 0
+                                ? [
+                                      createRenderMap(
+                                          `instructions/index.ts`,
+                                          getBarrelFragment(getPublicNames(instructionsToRender)),
+                                      ),
+                                  ]
+                                : []),
+                            ...(allPdas.length > 0
+                                ? [createRenderMap(`pdas/index.ts`, getBarrelFragment(getPublicNames(allPdas)))]
+                                : []),
                             ...node.accounts.map(n => visit(n, self)),
                             ...allDefinedTypes.map(n => visit(n, self)),
                             ...instructionsToRender.map(n =>
@@ -151,10 +235,10 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                                         asyncResolvers,
                                         getImportFrom,
                                         pdaNodes,
+                                        node.name,
                                     ),
                                 ),
                             ),
-                            ...node.pdas.map(n => visit(n, self)),
                             ...allPdas.map(n => visit(n, self)),
                         ];
 
@@ -171,6 +255,7 @@ export function getRenderMapVisitor(options: RenderMapOptions = {}) {
                         return mergeRenderMaps(renderMaps);
                     } finally {
                         currentProgramIdConstant = undefined;
+                        currentProgramName = undefined;
                     }
                 },
 

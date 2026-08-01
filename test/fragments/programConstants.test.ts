@@ -13,9 +13,30 @@ import {
     stringValueNode,
     structTypeNode,
 } from '@codama/nodes';
+import { LinkableDictionary, NodeStack } from '@codama/visitors-core';
 import { expect, test } from 'vitest';
 
-import { getConstantExportName, getProgramConstantsFragment } from '../../src/fragments/programConstants';
+import {
+    getConstantExportName,
+    getConstantsFragment,
+    getProgramConstantsFragment,
+} from '../../src/fragments/programConstants';
+import { DEFAULT_NAME_TRANSFORMERS, getImportFromFactory, getNameApi, parseCustomDataOptions } from '../../src/utils';
+import { getTypeManifestVisitor } from '../../src/visitors';
+
+function createTypeManifestVisitor() {
+    const customAccountData = parseCustomDataOptions([], 'AccountData');
+    const customInstructionData = parseCustomDataOptions([], 'InstructionData');
+    return getTypeManifestVisitor({
+        customAccountData,
+        customInstructionData,
+        getImportFrom: getImportFromFactory({}, customAccountData, customInstructionData),
+        linkables: new LinkableDictionary(),
+        nameApi: getNameApi(DEFAULT_NAME_TRANSFORMERS),
+        nonScalarEnums: [],
+        stack: new NodeStack(),
+    });
+}
 
 test('it exports program constants from the IDL', () => {
     const node = programNode({
@@ -24,10 +45,9 @@ test('it exports program constants from the IDL', () => {
         publicKey: 'HycecAnELpjL1pMp435nEKWkcr7aNZ2QGQGXpzK1VEdV',
     });
 
-    const result = getProgramConstantsFragment(node);
+    const result = getConstantsFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('export const EXPONENTVAULTS_PROGRAM_ID');
-    expect(result.content).toContain('export const SEED = "anchor";');
+    expect(result.content).toContain('export const SEED: string = "anchor";');
 });
 
 test('it exports bigint, bytes, and public key constants', () => {
@@ -45,12 +65,14 @@ test('it exports bigint, bytes, and public key constants', () => {
         publicKey: '11111111111111111111111111111111',
     });
 
-    const result = getProgramConstantsFragment(node);
+    const result = getConstantsFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('export const MAXAMOUNT = 42n;');
-    expect(result.content).toContain("export const DISCRIMINATOR = Buffer.from('deadbeef', 'hex');");
+    expect(result.content).toContain('export const MAX_AMOUNT: bigint = 42n;');
     expect(result.content).toContain(
-        'export const ADMIN = new Address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");',
+        "export const DISCRIMINATOR: ReadonlyUint8Array = Buffer.from('deadbeef', 'hex');",
+    );
+    expect(result.content).toContain(
+        'export const ADMIN: Address = new Address("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");',
     );
 });
 
@@ -61,12 +83,13 @@ test('it decodes JSON-encoded anchor string constants', () => {
         publicKey: 'HycecAnELpjL1pMp435nEKWkcr7aNZ2QGQGXpzK1VEdV',
     });
 
-    const result = getProgramConstantsFragment(node);
+    const result = getConstantsFragment(node, createTypeManifestVisitor());
 
-    expect(result.content).toContain('export const SEED = "anchor";');
+    expect(result.content).toContain('export const SEED: string = "anchor";');
 });
 
-test('getConstantExportName uppercases constant names', () => {
+test('getConstantExportName uses screaming snake case', () => {
+    expect(getConstantExportName('maxAmount')).toBe('MAX_AMOUNT');
     expect(getConstantExportName('sEED')).toBe('SEED');
 });
 
@@ -80,6 +103,18 @@ test('it omits internal nodes from barrel exports', () => {
 
     const result = getProgramConstantsFragment(node, ['hidden']);
 
-    expect(result.content).not.toContain("export * from './accounts/hidden'");
-    expect(result.content).toContain("export * from './instructions/visible'");
+    expect(result.content).not.toContain("export * from './accounts';");
+    expect(result.content).toContain("export * from './instructions';");
+});
+
+test('it exports constants through a top-level constants barrel', () => {
+    const node = programNode({
+        constants: [constantNode('seed', stringTypeNode('utf8'), stringValueNode('anchor'))],
+        name: 'test',
+        publicKey: '11111111111111111111111111111111',
+    });
+
+    const result = getProgramConstantsFragment(node);
+
+    expect(result.content).toContain("export * from './constants';");
 });

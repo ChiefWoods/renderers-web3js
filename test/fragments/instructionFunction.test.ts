@@ -59,7 +59,7 @@ test('it generates instruction with accounts and args', () => {
     expect(result.content).toContain('accounts: TransferInstructionAccounts');
     expect(result.content).toContain('args: TransferInstructionArgs');
     expect(result.content).toContain('programId: Address = DUMMYPRG_PROGRAM_ID');
-    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
+    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '../programs/dummyprg';");
     expect(result.content).toContain('TransactionInstruction');
     expect(result.content).toContain('const keys: AccountMeta[]');
     expect(result.content).toContain('isSigner: false, isWritable: true'); // from and to

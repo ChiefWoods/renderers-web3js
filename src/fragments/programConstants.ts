@@ -1,10 +1,10 @@
 import {
-    camelCase,
     CamelCaseString,
     ConstantNode,
     isNode,
     ProgramNode,
     resolveNestedTypeNode,
+    snakeCase,
     ValueNode,
 } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
@@ -22,37 +22,36 @@ import {
     NameApi,
     PathOverrides,
 } from '../utils';
+import { TypeManifestVisitor } from '../visitors/getTypeManifestVisitor';
 import { getValueVisitor, ValueVisitor } from '../visitors/getValueVisitor';
 
 export function getProgramConstantsFragment(
     node: ProgramNode,
     internalNodes: CamelCaseString[] = [],
     dependencyMap: PathOverrides = {},
-    nameApi: NameApi = getNameApi(DEFAULT_NAME_TRANSFORMERS),
+): Fragment {
+    return getCodeFileFragment([getExportsFragment(node, internalNodes)], dependencyMap);
+}
+
+export function getConstantsFragment(
+    node: ProgramNode,
+    typeManifestVisitor: TypeManifestVisitor,
+    dependencyMap: PathOverrides = {},
     nonScalarEnums: CamelCaseString[] = [],
 ): Fragment {
-    const fragments: Fragment[] = [];
-
-    // 1. Program ID constant
-    fragments.push(getProgramIdFragment(node, nameApi));
-
-    // 2. Program constants from the IDL
     const constants = node.constants ?? [];
-    if (constants.length > 0) {
-        const valueVisitor = getValueVisitor({ nonScalarEnums });
-        fragments.push(
+    const valueVisitor = getValueVisitor({ nonScalarEnums });
+    return getCodeFileFragment(
+        [
             mergeFragments(
-                constants.map(constant => getConstantFragment(constant, valueVisitor)),
+                [...constants]
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map(constant => getConstantFragment(constant, valueVisitor, typeManifestVisitor)),
                 cs => cs.join('\n'),
             ),
-        );
-    }
-
-    // 3. Export all from subdirectories
-    fragments.push(getExportsFragment(node, internalNodes));
-
-    // Combine fragments and prepend imports
-    return getCodeFileFragment(fragments, dependencyMap);
+        ],
+        dependencyMap,
+    );
 }
 
 export function getProgramIdConstantName(
@@ -63,24 +62,31 @@ export function getProgramIdConstantName(
 }
 
 export function getConstantExportName(name: string): string {
-    return name.toUpperCase();
+    if (/^[a-z][A-Z]+$/.test(name) || /^[A-Z0-9_]+$/.test(name)) {
+        return name.toUpperCase();
+    }
+    return snakeCase(name).toUpperCase();
 }
 
-function getProgramIdFragment(node: ProgramNode, nameApi: NameApi): Fragment {
-    const constantName = getProgramIdConstantName(node.name, nameApi);
-
-    return addFragmentImports(
-        fragment`export const ${constantName} = new Address('${node.publicKey}');`,
-        'web3',
-        'Address',
-    );
-}
-
-function getConstantFragment(constant: ConstantNode, valueVisitor: ValueVisitor): Fragment {
+function getConstantFragment(
+    constant: ConstantNode,
+    valueVisitor: ValueVisitor,
+    typeManifestVisitor: TypeManifestVisitor,
+): Fragment {
     const name = getConstantExportName(constant.name);
     const value = getConstantValueFragment(constant, valueVisitor);
+    const typeManifest = visit(constant.type, typeManifestVisitor);
+    const isNumberValue = isNode(constant.value, 'numberValueNode');
+    const isNumberType = isNode(constant.type, 'numberTypeNode');
+    const isSafeNumberType = isNumberType && ['u8', 'u16', 'u32'].includes(constant.type.format);
+    const useBigInt = isNumberValue && isNumberType && !isSafeNumberType;
+    const type = isNode(constant.value, 'stringValueNode')
+        ? fragment`string`
+        : useBigInt
+          ? fragment`bigint`
+          : typeManifest.strictType;
 
-    return mergeFragments([getJsDocFragment(constant.docs), fragment`export const ${name} = ${value};`], cs =>
+    return mergeFragments([getJsDocFragment(constant.docs), fragment`export const ${name}: ${type} = ${value};`], cs =>
         cs.join('\n'),
     );
 }
@@ -126,44 +132,18 @@ function normalizeStringConstantValue(value: string): string {
 }
 
 function getExportsFragment(node: ProgramNode, internalNodes: CamelCaseString[] = []): Fragment {
+    const hasPublicNodes = (nodes: { name: CamelCaseString }[]) =>
+        nodes.some(node => !internalNodes.includes(node.name));
     const exports: string[] = [];
-    const isNotInternal = (name: CamelCaseString) => !internalNodes.includes(name);
 
-    // Export all accounts
-    if (node.accounts.length > 0) {
-        node.accounts
-            .filter(account => isNotInternal(account.name))
-            .forEach(account => {
-                exports.push(`export * from './accounts/${camelCase(account.name)}';`);
-            });
-    }
-
-    // Export all instructions
-    if (node.instructions.length > 0) {
-        node.instructions
-            .filter(instruction => isNotInternal(instruction.name))
-            .forEach(instruction => {
-                exports.push(`export * from './instructions/${camelCase(instruction.name)}';`);
-            });
-    }
-
-    // Export all PDAs
-    if (node.pdas.length > 0) {
-        node.pdas
-            .filter(pda => isNotInternal(pda.name))
-            .forEach(pda => {
-                exports.push(`export * from './pdas/${camelCase(pda.name)}';`);
-            });
-    }
-
-    // Export all defined types
-    if (node.definedTypes.length > 0) {
-        node.definedTypes
-            .filter(type => isNotInternal(type.name))
-            .forEach(type => {
-                exports.push(`export * from './types/${camelCase(type.name)}';`);
-            });
-    }
+    if (hasPublicNodes(node.accounts)) exports.push(`export * from './accounts';`);
+    if ((node.constants ?? []).length > 0) exports.push(`export * from './constants';`);
+    if ((node.errors ?? []).length > 0) exports.push(`export * from './errors';`);
+    if (hasPublicNodes(node.events ?? [])) exports.push(`export * from './events';`);
+    if (hasPublicNodes(node.instructions)) exports.push(`export * from './instructions';`);
+    if (hasPublicNodes(node.pdas)) exports.push(`export * from './pdas';`);
+    exports.push(`export * from './programs';`);
+    if (hasPublicNodes(node.definedTypes)) exports.push(`export * from './types';`);
 
     return fragment`${exports.join('\n')}`;
 }

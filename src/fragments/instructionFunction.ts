@@ -14,9 +14,12 @@ import { ResolvedInstructionInput, visit } from '@codama/visitors-core';
 import {
     addFragmentImports,
     DEFAULT_NAME_TRANSFORMERS,
+    DiscriminatorInfo,
     Fragment,
     fragment,
     getCodeFileFragment,
+    getDiscriminatorConstantContent,
+    getDiscriminatorInfos,
     getNameApi,
     GetImportFromFunction,
     mergeFragments,
@@ -112,13 +115,19 @@ export function getInstructionFunctionFragment(
     asyncResolvers: CamelCaseString[] = [],
     getImportFrom?: GetImportFromFunction,
     pdaNodes: ReadonlyMap<string, PdaNode> = new Map(),
+    programName?: string,
 ): Fragment {
     const names = nameApi ?? defaultNameApi;
     const hasAccounts = node.accounts.length > 0;
     const hasArgs = node.arguments.length > 0;
     const customData = customInstructionData.get(node.name);
+    const discriminators = getDiscriminatorInfos(node.name, 'instruction', node.discriminators ?? [], node.arguments);
 
     const fragments: Fragment[] = [];
+
+    if (discriminators.length > 0) {
+        fragments.push(fragment`${discriminators.map(getDiscriminatorConstantContent).join('\n\n')}`);
+    }
 
     // 1. Generate Accounts interface (if there are accounts)
     if (hasAccounts) {
@@ -138,7 +147,10 @@ export function getInstructionFunctionFragment(
         fragments.push(getInstructionEncoderFragment(node, typeManifestVisitor, names));
     }
 
-    // 4. Generate the instruction builder function
+    // 4. Generate instruction parsing helpers for program-level dispatchers.
+    fragments.push(getInstructionParserFragment(node, typeManifestVisitor, customData, names, discriminators));
+
+    // 5. Generate the instruction builder function
     fragments.push(
         getInstructionBuilderFragment(
             node,
@@ -151,6 +163,8 @@ export function getInstructionFunctionFragment(
             asyncResolvers,
             getImportFrom,
             pdaNodes,
+            discriminators,
+            programName,
         ),
     );
 
@@ -303,6 +317,85 @@ function getInstructionEncoderFragment(
 }`;
 }
 
+function getInstructionParserFragment(
+    node: InstructionNode,
+    typeManifestVisitor: TypeManifestVisitor,
+    customData: CustomInstructionData | undefined,
+    nameApi: NameApi,
+    discriminators: DiscriminatorInfo[],
+): Fragment {
+    const name = pascalCase(node.name);
+    const parsedType = `Parsed${name}Instruction`;
+    const argsType = nameApi.instructionArgsType(node.name);
+    const userArgs = getUserArgs(node);
+    const discriminatorLength = discriminators.reduce((sum, discriminator) => sum + discriminator.bytes.length, 0);
+    const discriminatorValidation = discriminators
+        .map(
+            discriminator => `if (!${discriminator.constantName}.every((byte, index) => instruction.data[${discriminator.offset} + index] === byte)) {
+        throw new Error('${name} instruction discriminator mismatch');
+    }`,
+        )
+        .join('\n    ');
+    const accounts = node.accounts.map(
+        (account, index) => `        ${camelCase(account.name)}: instruction.keys[${index}]!,`,
+    );
+    const accountTypeFields = node.accounts.map(account => `        ${camelCase(account.name)}: AccountMeta;`);
+    const dataType = customData || userArgs.length > 0 ? argsType : '{}';
+
+    let decoder: Fragment;
+    let decodeExpression: string;
+    if (customData) {
+        const codecName = `${pascalCase(customData.importAs)}Codec`;
+        decoder = fragment``;
+        decodeExpression = `${codecName}.decode(instructionData)`;
+    } else if (userArgs.length === 0) {
+        decoder = fragment``;
+        decodeExpression = '{}';
+    } else if (usesRawStringEncoding(node)) {
+        const stringArg = userArgs[0];
+        const encoding = isNode(stringArg.type, 'stringTypeNode') ? stringArg.type.encoding : 'utf8';
+        decoder = fragment``;
+        decodeExpression = `{ ${camelCase(stringArg.name)}: Buffer.from(instructionData).toString('${encoding}') }`;
+    } else {
+        const decoderFunction = `get${nameApi.instructionDataType(node.name)}Decoder`;
+        const manifest = visit(structTypeNodeFromInstructionArgumentNodes(userArgs), typeManifestVisitor);
+        decoder = fragment`function ${decoderFunction}(): ${use('type Decoder', 'codecs')}<${argsType}> {
+    return ${manifest.decoder};
+}`;
+        decodeExpression = `${decoderFunction}().decode(instructionData)`;
+    }
+
+    const minimumAccountsCheck = node.accounts.length
+        ? `if (instruction.keys.length < ${node.accounts.length}) {
+        throw new Error('Expected ${node.accounts.length} account metas for ${name} instruction');
+    }
+    `
+        : '';
+    const accountsType = node.accounts.length ? `{\n${accountTypeFields.join('\n')}\n    }` : '{}';
+    const accountsValue = node.accounts.length ? `{\n${accounts.join('\n')}\n    }` : '{}';
+
+    return addFragmentImports(
+        fragment`${decoder}
+
+export interface ${parsedType} {
+    programId: Address;
+    accounts: ${accountsType};
+    data: ${dataType};
+}
+
+export function parse${name}Instruction(instruction: TransactionInstruction): ${parsedType} {
+    ${minimumAccountsCheck}${discriminatorValidation ? `${discriminatorValidation}\n    ` : ''}const instructionData = instruction.data.subarray(${discriminatorLength});
+    return {
+        programId: instruction.programId,
+        accounts: ${accountsValue},
+        data: ${decodeExpression},
+    };
+}`,
+        'web3',
+        ['AccountMeta', 'Address', 'TransactionInstruction'],
+    );
+}
+
 function getKeysArrayFragment(node: InstructionNode, resolvedInputs: ResolvedInstructionInput[]): Fragment {
     if (node.accounts.length === 0) {
         return addFragmentImports(fragment`const keys: AccountMeta[] = [];`, 'web3', 'AccountMeta');
@@ -419,6 +512,8 @@ function getInstructionBuilderFragment(
     asyncResolvers: CamelCaseString[] = [],
     getImportFrom?: GetImportFromFunction,
     pdaNodes: ReadonlyMap<string, PdaNode> = new Map(),
+    discriminators: DiscriminatorInfo[] = [],
+    programName?: string,
 ): Fragment {
     const functionName = nameApi.instructionCreateFunction(node.name);
     const accountsType = nameApi.instructionAccountsType(node.name);
@@ -478,7 +573,22 @@ function getInstructionBuilderFragment(
 
     // Generate data serialization
     let dataFragment: Fragment;
-    if (customData) {
+    if (discriminators.length > 0) {
+        const encodedData = customData || hasUserArgs ? `Buffer.from(${encodeCall})` : 'Buffer.alloc(0)';
+        const insertions = [...discriminators]
+            .sort((a, b) => a.offset - b.offset)
+            .map(
+                discriminator => `data = Buffer.concat([
+        data.subarray(0, ${discriminator.offset}),
+        Buffer.alloc(Math.max(0, ${discriminator.offset} - data.length)),
+        Buffer.from(${discriminator.constantName}),
+        data.subarray(${discriminator.offset}),
+    ]);`,
+            )
+            .join('\n    ');
+        dataFragment = fragment`let data = ${encodedData};
+    ${insertions}`;
+    } else if (customData) {
         const discriminatorArg = getDiscriminatorArg(node);
         if (discriminatorArg && discriminatorArg.defaultValue?.kind === 'bytesValueNode') {
             const discriminatorHex = discriminatorArg.defaultValue.data;
@@ -611,7 +721,11 @@ function getInstructionBuilderFragment(
     // Add all necessary imports
     let finalResult = addFragmentImports(result, 'web3', ['Address', 'TransactionInstruction']);
     if (programIdConstant) {
-        finalResult = addFragmentImports(finalResult, '..', programIdConstant);
+        finalResult = addFragmentImports(
+            finalResult,
+            getProgramIdImportPath(programIdConstant, programName),
+            programIdConstant,
+        );
     }
     if (hasAccounts) {
         finalResult = addFragmentImports(finalResult, 'web3', 'AccountMeta');
@@ -630,6 +744,10 @@ function getInstructionBuilderFragment(
     }
 
     return finalResult;
+}
+
+function getProgramIdImportPath(programIdConstant: string, programName?: string): string {
+    return `../programs/${camelCase(programName ?? programIdConstant.replace(/_PROGRAM_ID$/, '').toLowerCase())}`;
 }
 
 /**
@@ -673,6 +791,8 @@ function getInputDefaultFragment(
             // values by position onto the canonical PDA's variable seed names.
             const seedsEntries: Fragment[] = [];
             const canonicalPda = pdaNodes.get(String(defaultValue.pda.name));
+            const inlineProgramId = defaultValue.pda.kind === 'pdaNode' ? defaultValue.pda.programId : undefined;
+            const hasExplicitProgramId = !!(canonicalPda?.programId ?? inlineProgramId);
             const canonicalVariableSeeds =
                 canonicalPda?.seeds.filter(seed => seed.kind === 'variablePdaSeedNode') ?? [];
 
@@ -722,9 +842,10 @@ function getInputDefaultFragment(
             const seedsContent = mergeFragments(seedsEntries, cs => cs.map(c => `            ${c},`).join('\n'));
 
             const hasSeeds = seedsEntries.length > 0;
+            const programIdArgument = hasExplicitProgramId ? '' : ', programId';
             const pdaCall = hasSeeds
-                ? fragment`${pdaFunctionName}({\n${seedsContent}\n        }, programId)`
-                : fragment`${pdaFunctionName}(programId)`;
+                ? fragment`${pdaFunctionName}({\n${seedsContent}\n        }${programIdArgument})`
+                : fragment`${pdaFunctionName}(${hasExplicitProgramId ? '' : 'programId'})`;
 
             // Generate complete pattern with variable declaration and derivation
             const result = addFragmentImports(

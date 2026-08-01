@@ -47,7 +47,7 @@ test('it generates PDA function with variable seeds', () => {
 
     // Check imports
     expect(result.content).toContain("import { Address } from '@solana/web3.js'");
-    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '..';");
+    expect(result.content).toContain("import { DUMMYPRG_PROGRAM_ID } from '../programs/dummyprg';");
 });
 
 test('it generates PDA function with no variable seeds', () => {

@@ -1,12 +1,16 @@
-import { AccountNode, camelCase, pascalCase } from '@codama/nodes';
+import { AccountNode, camelCase, pascalCase, resolveNestedTypeNode } from '@codama/nodes';
 import { visit } from '@codama/visitors-core';
 
 import {
     addFragmentImports,
     DEFAULT_NAME_TRANSFORMERS,
+    DiscriminatorInfo,
     Fragment,
     fragment,
     getCodeFileFragment,
+    getDiscriminatorConstantContent,
+    getDiscriminatorInfos,
+    getDiscriminatorValidationContent,
     getNameApi,
     NameApi,
     ParsedCustomDataOptions,
@@ -27,6 +31,12 @@ export function getAccountTypeFragment(
 ): Fragment {
     const customData = customAccountData.get(node.name);
     const fragments: Fragment[] = [];
+    const resolvedData = resolveNestedTypeNode(node.data);
+    const discriminators = getDiscriminatorInfos(node.name, 'account', node.discriminators ?? [], resolvedData.fields);
+
+    if (discriminators.length > 0) {
+        fragments.push(fragment`${discriminators.map(getDiscriminatorConstantContent).join('\n\n')}`);
+    }
 
     if (customData) {
         const dataTypeName = pascalCase(customData.importAs);
@@ -41,13 +51,29 @@ export { ${schemaName} };`,
             ),
         );
         fragments.push(getAccountInterfaceFragment(node, dataTypeName));
-        fragments.push(getDeserializeAccountFragment(node, dataTypeName, schemaName, /* stripDiscriminators */ false));
+        fragments.push(
+            getDeserializeAccountFragment(
+                node,
+                dataTypeName,
+                schemaName,
+                /* stripDiscriminators */ false,
+                nameApi,
+                discriminators,
+            ),
+        );
     } else {
         fragments.push(getAccountDataTypeFragment(node, typeManifestVisitor, nameApi));
         fragments.push(getAccountInterfaceFragment(node, nameApi.accountDataType(node.name)));
         fragments.push(getAccountDecoderFragment(node, typeManifestVisitor, nameApi));
         fragments.push(
-            getDeserializeAccountFragment(node, nameApi.accountDataType(node.name), undefined, true, nameApi),
+            getDeserializeAccountFragment(
+                node,
+                nameApi.accountDataType(node.name),
+                undefined,
+                true,
+                nameApi,
+                discriminators,
+            ),
         );
     }
 
@@ -127,6 +153,7 @@ function getDeserializeAccountFragment(
     schemaName?: string,
     stripDiscriminators = true,
     nameApi: NameApi = defaultNameApi,
+    discriminators: DiscriminatorInfo[] = [],
 ): Fragment {
     const name = pascalCase(node.name);
     const functionName = `deserialize${name}Account`;
@@ -139,10 +166,12 @@ function getDeserializeAccountFragment(
         .map(d => d.name);
 
     const hasDiscriminator = stripDiscriminators && discriminatorNames.length > 0;
+    const validation = discriminators.map(info => getDiscriminatorValidationContent(info)).join('\n    ');
 
     if (hasDiscriminator) {
         const destructureFields = discriminatorNames.map(n => `${camelCase(n)}: _`).join(', ');
         return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
+    ${validation}
     const deserialized = ${decoderCall};
     const { ${destructureFields}, ...accountData } = deserialized;
     return accountData as ${dataTypeName};
@@ -150,6 +179,7 @@ function getDeserializeAccountFragment(
     }
 
     return fragment`export function ${functionName}(data: Uint8Array): ${dataTypeName} {
+    ${validation}
     return ${decoderCall};
 }`;
 }

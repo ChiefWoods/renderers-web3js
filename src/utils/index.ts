@@ -1,5 +1,6 @@
 export * from './codecs';
 export * from './customData';
+export * from './discriminators';
 export * from './formatCode';
 export * from './fragment';
 export * from './importMap';

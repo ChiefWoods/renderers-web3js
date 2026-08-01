@@ -17,6 +17,7 @@ export function getPdaFunctionFragment(
     typeVisitor: TypeVisitor,
     programIdConstant?: string,
     dependencyMap: PathOverrides = {},
+    programName?: string,
 ): Fragment {
     const fragments: Fragment[] = [];
 
@@ -30,7 +31,7 @@ export function getPdaFunctionFragment(
     }
 
     // 2. Generate PDA derivation function
-    fragments.push(getPdaDerivationFunctionFragment(node, hasVariableSeeds, programIdConstant));
+    fragments.push(getPdaDerivationFunctionFragment(node, hasVariableSeeds, programIdConstant, programName));
 
     // Combine fragments and prepend imports
     return getCodeFileFragment(fragments, dependencyMap);
@@ -57,6 +58,7 @@ function getPdaDerivationFunctionFragment(
     node: PdaNode,
     hasVariableSeeds: boolean,
     programIdConstant?: string,
+    programName?: string,
 ): Fragment {
     const name = pascalCase(node.name);
     const functionName = `find${name}Pda`;
@@ -67,7 +69,9 @@ function getPdaDerivationFunctionFragment(
     if (hasVariableSeeds) {
         params.push(`seeds: ${seedsType}`);
     }
-    if (programIdConstant) {
+    if (node.programId) {
+        // Explicit PDA owners (for example the Associated Token Program) are fixed by the IDL.
+    } else if (programIdConstant) {
         params.push(`programId: Address = ${programIdConstant}`);
     } else {
         params.push('programId: Address');
@@ -79,7 +83,11 @@ function getPdaDerivationFunctionFragment(
     const seedsArrayFragment = getSeedsArrayFragment(node);
 
     // Build function body
-    const functionBody = fragment`${seedsArrayFragment}
+    const explicitProgramId = node.programId
+        ? fragment`const programId = new Address('${node.programId}');
+    `
+        : fragment``;
+    const functionBody = fragment`${explicitProgramId}${seedsArrayFragment}
     return await Address.findProgramAddress(seedsBuffer, programId);`;
 
     let functionFragment = addFragmentImports(
@@ -88,11 +96,19 @@ function getPdaDerivationFunctionFragment(
         'Address',
     );
 
-    if (programIdConstant) {
-        functionFragment = addFragmentImports(functionFragment, '..', programIdConstant);
+    if (programIdConstant && !node.programId) {
+        functionFragment = addFragmentImports(
+            functionFragment,
+            getProgramIdImportPath(programIdConstant, programName),
+            programIdConstant,
+        );
     }
 
     return functionFragment;
+}
+
+function getProgramIdImportPath(programIdConstant: string, programName?: string): string {
+    return `../programs/${camelCase(programName ?? programIdConstant.replace(/_PROGRAM_ID$/, '').toLowerCase())}`;
 }
 
 function getSeedsArrayFragment(node: PdaNode): Fragment {
