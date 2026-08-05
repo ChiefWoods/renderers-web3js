@@ -3,10 +3,15 @@
     "version": "0.5.0",
     "description": "JavaScript renderer compatible with the Solana Web3.js library",
     "keywords": [
-        "framework",
         "renderers",
         "solana",
-        "standard"
+        "standard",
+        "codama",
+        "web3js",
+        "web3.js",
+        "typescript",
+        "idl",
+        "codegen"
     ],
     "bugs": {
         "url": "http://github.com/ChiefWoods/renderers-web3js/issues"
