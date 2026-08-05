@@ -1,5 +1,11 @@
 # renderers-web3js
 
+## 0.5.1
+
+### Patch Changes
+
+- Improve package metadata, CI
+
 ## 0.5.0
 
 ### Minor Changes
