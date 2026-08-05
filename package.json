@@ -13,6 +13,7 @@
         "idl",
         "codegen"
     ],
+    "homepage": "https://github.com/ChiefWoods/renderers-web3js#readme",
     "bugs": {
         "url": "http://github.com/ChiefWoods/renderers-web3js/issues"
     },
