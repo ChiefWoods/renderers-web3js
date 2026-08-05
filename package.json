@@ -1,104 +1,107 @@
 {
-    "name": "renderers-web3js",
-    "version": "0.5.0",
-    "description": "JavaScript renderer compatible with the Solana Web3.js library",
-    "keywords": [
-        "renderers",
-        "solana",
-        "standard",
-        "codama",
-        "web3js",
-        "web3.js",
-        "typescript",
-        "idl",
-        "codegen"
-    ],
-    "homepage": "https://github.com/ChiefWoods/renderers-web3js#readme",
-    "bugs": {
-        "url": "http://github.com/ChiefWoods/renderers-web3js/issues"
-    },
-    "license": "MIT",
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/ChiefWoods/renderers-web3js"
-    },
-    "files": [
-        "./dist/types",
-        "./dist/index.*"
-    ],
-    "type": "commonjs",
-    "sideEffects": false,
-    "main": "./dist/index.node.cjs",
-    "module": "./dist/index.node.mjs",
-    "browser": {
-        "./dist/index.node.cjs": "./dist/index.browser.cjs",
-        "./dist/index.node.mjs": "./dist/index.browser.mjs"
-    },
+  "name": "renderers-web3js",
+  "version": "0.5.0",
+  "description": "JavaScript renderer compatible with the Solana Web3.js library",
+  "keywords": [
+    "renderers",
+    "solana",
+    "standard",
+    "codama",
+    "web3js",
+    "web3.js",
+    "typescript",
+    "idl",
+    "codegen"
+  ],
+  "homepage": "https://github.com/ChiefWoods/renderers-web3js#readme",
+  "bugs": {
+    "url": "http://github.com/ChiefWoods/renderers-web3js/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ChiefWoods/renderers-web3js"
+  },
+  "files": [
+    "./dist/types",
+    "./dist/index.*"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.node.cjs",
+  "module": "./dist/index.node.mjs",
+  "browser": {
+    "./dist/index.node.cjs": "./dist/index.browser.cjs",
+    "./dist/index.node.mjs": "./dist/index.browser.mjs"
+  },
+  "types": "./dist/types/index.d.ts",
+  "react-native": "./dist/index.react-native.mjs",
+  "exports": {
     "types": "./dist/types/index.d.ts",
     "react-native": "./dist/index.react-native.mjs",
-    "exports": {
-        "types": "./dist/types/index.d.ts",
-        "react-native": "./dist/index.react-native.mjs",
-        "browser": {
-            "import": "./dist/index.browser.mjs",
-            "require": "./dist/index.browser.cjs"
-        },
-        "node": {
-            "import": "./dist/index.node.mjs",
-            "require": "./dist/index.node.cjs"
-        }
+    "browser": {
+      "import": "./dist/index.browser.mjs",
+      "require": "./dist/index.browser.cjs"
     },
-    "scripts": {
-        "build": "rimraf dist && tsdown && tsc -p ./tsconfig.declarations.json",
-        "dev": "vitest --project node",
-        "lint": "oxlint",
-        "lint:fix": "oxlint --fix",
-        "format": "oxfmt",
-        "format:check": "oxfmt --check",
-        "changeset": "changeset",
-        "publish-package": "bun run build && changeset publish",
-        "version": "changeset version",
-        "test": "bun run test:types && bun run build && bun run test:e2e && bun run test:generated && bun run test:unit && bun run test:exports",
-        "test:e2e": "./test/e2e/test.sh",
-        "test:exports": "node ./test/exports/module.mjs && node ./test/exports/commonjs.cjs",
-        "test:generated": "vitest run test/generated/memo.test.ts test/generated/system.test.ts",
-        "test:treeshakability": "for file in dist/index.*.mjs; do agadoo $file; done",
-        "test:types": "tsc --noEmit -p ./tsconfig.typecheck.json",
-        "test:unit": "vitest run test/fragments/accountType.test.ts test/fragments/definedType.test.ts test/fragments/instructionFunction.test.ts test/fragments/pdaFunction.test.ts test/fragments/programConstants.test.ts test/utils/importMap.test.ts test/utils/linkOverrides.test.ts test/utils/nameTransformers.test.ts test/utils/packageJson.test.ts test/visitors/getTypeVisitor.test.ts test/visitors/getValueVisitor.test.ts test/visitors/renderParentInstructions.test.ts"
-    },
-    "dependencies": {
-        "@codama/errors": "^1.9.0",
-        "@codama/nodes": "^1.9.0",
-        "@codama/renderers-core": "^1.3.10",
-        "@codama/visitors-core": "^1.9.0",
-        "@solana/codecs": "^6.10.0",
-        "@solana/web3.js": "3.0.0-rc.2",
-        "oxfmt": "^0.60.0",
-        "semver": "^7.8.5"
-    },
-    "devDependencies": {
-        "@changesets/changelog-github": "^0.5.1",
-        "@changesets/cli": "^2.29.7",
-        "@codama/cli": "^1.5.4",
-        "@codama/nodes-from-anchor": "^1.5.2",
-        "@solana-config/oxc": "^0.1.1",
-        "@types/node": "^24",
-        "@types/semver": "^7.7.1",
-        "agadoo": "^3.0.0",
-        "happy-dom": "^19.0.1",
-        "oxlint": "^1.75.0",
-        "oxlint-tsgolint": "^7.0.2001",
-        "rimraf": "6.0.1",
-        "tsdown": "^0.22.13",
-        "typescript": "^7.0.2",
-        "vitest": "^4.1.10"
-    },
-    "browserslist": [
-        "supports bigint and not dead",
-        "maintained node versions"
-    ],
-    "engines": {
-        "node": ">=24.18.0"
-    },
-    "packageManager": "bun@1.3.14"
+    "node": {
+      "import": "./dist/index.node.mjs",
+      "require": "./dist/index.node.cjs"
+    }
+  },
+  "scripts": {
+    "build": "rimraf dist && tsdown && tsc -p ./tsconfig.declarations.json",
+    "dev": "vitest --project node",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "changeset": "changeset",
+    "publish-package": "bun run build && changeset publish",
+    "version": "changeset version",
+    "test": "bun run test:types && bun run build && bun run test:e2e && bun run test:generated && bun run test:unit && bun run test:exports",
+    "test:e2e": "./test/e2e/test.sh",
+    "test:exports": "node ./test/exports/module.mjs && node ./test/exports/commonjs.cjs",
+    "test:generated": "vitest run test/generated/memo.test.ts test/generated/system.test.ts",
+    "test:treeshakability": "for file in dist/index.*.mjs; do agadoo $file; done",
+    "test:types": "tsc --noEmit -p ./tsconfig.typecheck.json",
+    "test:unit": "vitest run test/fragments/accountType.test.ts test/fragments/definedType.test.ts test/fragments/instructionFunction.test.ts test/fragments/pdaFunction.test.ts test/fragments/programConstants.test.ts test/utils/importMap.test.ts test/utils/linkOverrides.test.ts test/utils/nameTransformers.test.ts test/utils/packageJson.test.ts test/visitors/getTypeVisitor.test.ts test/visitors/getValueVisitor.test.ts test/visitors/renderParentInstructions.test.ts",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@codama/errors": "^1.9.0",
+    "@codama/nodes": "^1.9.0",
+    "@codama/renderers-core": "^1.3.10",
+    "@codama/visitors-core": "^1.9.0",
+    "@solana/codecs": "^6.10.0",
+    "@solana/web3.js": "3.0.0-rc.2",
+    "oxfmt": "^0.60.0",
+    "semver": "^7.8.5"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.7",
+    "@codama/cli": "^1.5.4",
+    "@codama/nodes-from-anchor": "^1.5.2",
+    "@solana-config/oxc": "^0.1.1",
+    "@types/node": "^24",
+    "@types/semver": "^7.7.1",
+    "agadoo": "^3.0.0",
+    "happy-dom": "^19.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.3.0",
+    "oxlint": "^1.75.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "rimraf": "6.0.1",
+    "tsdown": "^0.22.13",
+    "typescript": "^7.0.2",
+    "vitest": "^4.1.10"
+  },
+  "browserslist": [
+    "supports bigint and not dead",
+    "maintained node versions"
+  ],
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "packageManager": "bun@1.3.14"
 }
